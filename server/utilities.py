@@ -1,3 +1,9 @@
+from calls import *
+
+# The following functions are the handlers for API calls.
+# They use functions defined in calls.py accordingly, with respect to Chord protocol
+
+
 def userInsertHandle(req):
     return 'todo'
 
