@@ -3,6 +3,7 @@ from calls import *
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
+# TODO: define the logic of each handler for user/network requests
 
 def userInsertHandle(req):
     return 'todo'
@@ -36,5 +37,3 @@ def nodeInsertHandle(req):
 
 def nodeDeleteHandle(req):
     return 'todo'
-
-def

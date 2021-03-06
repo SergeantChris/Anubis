@@ -5,6 +5,11 @@ from config import *
 
 app = Flask(__name__)
 
+# The API endpoints immediately redirect to their handlers, passing them the
+# JSON request object
+
+# No changes required in this file (yet)
+
 @app.route('/user/insert', methods=['POST'])
 def user_insert_callback():
     req = request.get_json()
