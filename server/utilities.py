@@ -8,37 +8,37 @@ import hashlib
 # TODO: define the logic of each handler for user/network requests
 
 def userInsertHandle(req):
-    return 'todo'
+    return 'insert'
 
 def userDeleteHandle(req):
-    return 'todo'
+    return 'delete'
 
 def userQueryHandle(req):
-    return 'todo'
+    return 'query'
 
 def userDepartHandle(req):
-    return 'todo'
+    return 'depart'
 
 def userOverlayHandle(req):
-    return 'todo'
+    return 'overlay'
 
 def masterJoinHandle(req):
-    return 'todo'
+    return 'master join'
 
 def masterDepartHandle(req):
-    return 'todo'
+    return 'depart'
 
 def nodeUpdatePeerListHandle(req):
-    return 'todo'
+    return 'peer'
 
 def nodeQueryHandle(req):
-    return 'todo'
+    return 'query'
 
 def nodeInsertHandle(req):
-    return 'todo'
+    return 'insert'
 
 def nodeDeleteHandle(req):
-    return 'todo'
+    return 'delete'
 
 def hash(key):
 	return hashlib.sha1(key.encode('utf-8')).hexdigest()

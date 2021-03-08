@@ -37,7 +37,8 @@ def user_overlay_callback():
 
 @app.route('/master/join', methods=['POST'])
 def master_join_callback():
-    req = request.get_json()
+    # form to dic because it didnt work with json
+    req = request.form.to_dict()
     return masterJoinHandle(req)
 
 @app.route('/master/depart', methods=['POST'])
@@ -108,20 +109,25 @@ if __name__ == '__main__':
         print("My id is: " + KARNAK_ID)
         print("\nJoing the chord...")
 
+        call_params = {
+            "nid": KARNAK_ID,
+            "ip": KARNAK_IP,
+            "port": KARNAK_PORT
+        }
+
         try:
-        	response = requests.post(HTTP + KARNAK_MASTER_IP + ":" +
-                                     config.KARNAK_MASTER_PORT + "/master/join",
-                                     data = {"nid":KARNAK_ID, "ip":KARNAK_IP,
-                                             "port":KARNAK_PORT})
-        	if response.status_code == 200:
-        		print(response.text)
-        	else:
-        		print("Something went wrong!!  status code: " +
+            response = requests.post(HTTP + KARNAK_MASTER_IP + ":" +
+                                     KARNAK_MASTER_PORT + "/master/join",
+                                     call_params)
+            if response.status_code == 200:
+            	print(response.text)
+            else:
+            	print("Something went wrong: status code: " +
                  response.status.code)
-        		print("\nexiting...")
-        		exit(0)
+            	print("\nexiting...")
+            	exit(0)
         except:
-        	print("\nSomething went wrong!! (check if bootstrap is up and running)")
+        	print("\nSomething went wrong: check if master is up and running")
         	print("\nexiting...")
         	exit(0)
 
