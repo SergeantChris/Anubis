@@ -1,4 +1,6 @@
 from calls import *
+import hashlib
+
 
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
@@ -37,3 +39,6 @@ def nodeInsertHandle(req):
 
 def nodeDeleteHandle(req):
     return 'todo'
+
+def hash(key):
+	return hashlib.sha1(key.encode('utf-8')).hexdigest()
