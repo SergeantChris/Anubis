@@ -39,7 +39,7 @@ def user_overlay_callback():
 def master_join_callback():
     # form to dic because it didnt work with json
     req = request.form.to_dict()
-    return masterJoinHandle(req)
+    return masterJoinHandle(req, NODES_LIST)
 
 @app.route('/master/depart', methods=['POST'])
 def master_depart_callback():
@@ -48,7 +48,7 @@ def master_depart_callback():
 
 @app.route('/node/updatePeerList', methods=['POST'])
 def node_updatePeerList_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return nodeUpdatePeerListHandle(req)
 
 @app.route('/node/query', methods=['POST'])
@@ -96,8 +96,8 @@ if __name__ == '__main__':
 
         # Master is the first one to enter the list
         # we need this list to create the PEERS_LIST dynamically
-        NODES_LIST = {"nid":MASTER_ID, "ip":KARNAK_MASTER_IP,
-                      "port":KARNAK_MASTER_PORT}
+        NODES_LIST = [{"nid":MASTER_ID, "ip":KARNAK_MASTER_IP,
+                      "port":KARNAK_MASTER_PORT}]
 
     else:
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
                                      KARNAK_MASTER_PORT + "/master/join",
                                      call_params)
             if response.status_code == 200:
-            	print(response.text)
+            	print("I got the response")
             else:
             	print("Something went wrong: status code: " +
                  response.status.code)

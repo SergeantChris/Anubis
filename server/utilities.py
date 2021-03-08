@@ -22,14 +22,20 @@ def userDepartHandle(req):
 def userOverlayHandle(req):
     return 'overlay'
 
-def masterJoinHandle(req):
-    return 'master join'
+def masterJoinHandle(req, node_list):
+    node_list.append(req)
+    node_list = sorted(node_list, key = lambda i: (i['nid']))
+    # δεν λειτουργουν προς το παρων τα παρακατω
+    # node_index = node_list.index(req)
+    # print(node_index)
+    # remoteNodeUpdatePeerList(node_list[node_index - 1 : node_index + 2])
+    return "node joined"
 
 def masterDepartHandle(req):
     return 'depart'
 
 def nodeUpdatePeerListHandle(req):
-    return 'peer'
+    return req
 
 def nodeQueryHandle(req):
     return 'query'
