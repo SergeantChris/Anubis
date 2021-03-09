@@ -1,4 +1,6 @@
 from calls import *
+from config import *
+import globals
 import hashlib
 
 
@@ -16,22 +18,31 @@ def userDeleteHandle(req):
 def userQueryHandle(req):
     return 'query'
 
-def userDepartHandle(req):
-    return 'depart'
+def userDepartHandle():
+    depart = globals.KARNAK_ID
+    new_list = [node for node in globals.PEER_LIST if node["nid"] != depart]  # inefficient
+    requests.post(HTTP + KARNAK_MASTER_IP + ':' + KARNAK_MASTER_PORT + '/master/depart', {"new_list": str(new_list)})
+    return 'informed master'
 
-def userOverlayHandle(req):
-    return 'overlay'
+def userOverlayHandle():
+    return str(globals.PEER_LIST)
 
-def masterJoinHandle(req, node_list):
-    node_list.append(req)
-    node_list = sorted(node_list, key=lambda i: (i['nid']))
-    return tuple(node_list)
+def masterJoinHandle(req):
+    prev_list = globals.PEER_LIST.copy()
+    globals.PEER_LIST.append(req)
+    globals.PEER_LIST.sort(key=lambda i: (i["nid"]))
+    for peer in prev_list:
+        remoteNodeUpdatePeerList(peer["ip"], peer["port"], {"new_list": str(globals.PEER_LIST)})
+    return str(globals.PEER_LIST)
 
 def masterDepartHandle(req):
-    return 'depart'
+    for peer in globals.PEER_LIST:
+        remoteNodeUpdatePeerList(peer["ip"], peer["port"], req)
+    return 'departed'
 
 def nodeUpdatePeerListHandle(req):
-    return req
+    globals.PEER_LIST = list(eval(req["new_list"]))
+    return 'updated peer list'
 
 def nodeQueryHandle(req):
     return 'query'
