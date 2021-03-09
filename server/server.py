@@ -1,136 +1,135 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from utilities import *
 from config import *
-from globals import *
-import sys, os
+import globals
+import sys
+import os
 
 app = Flask(__name__)
 
 # The API endpoints immediately redirect to their handlers, passing them the
-# JSON request object
+# dict request object
 
 
 @app.route('/user/insert', methods=['POST'])
 def user_insert_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return userInsertHandle(req)
 
 @app.route('/user/delete', methods=['POST'])
 def user_delete_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return userDeleteHandle(req)
 
 @app.route('/user/query', methods=['POST'])
 def user_query_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return userQueryHandle(req)
 
 @app.route('/user/depart', methods=['POST'])
-def user_depart_callback():
-    req = request.get_json()
-    return userDepartHandle(req)
+def user_depart_callback():  # V
+    return userDepartHandle()
 
 @app.route('/user/overlay', methods=['POST'])
-def user_overlay_callback():
-    req = request.get_json()
-    return userOverlayHandle(req)
+def user_overlay_callback():  # V
+    return userOverlayHandle()
 
 @app.route('/master/join', methods=['POST'])
-def master_join_callback():
-    # form to dict because it didnt work with json
-    req = request.form.to_dict()
-    return masterJoinHandle(req, NODES_LIST)
+def master_join_callback():  # V
+    if globals.SELF_MASTER:
+        req = request.form.to_dict()
+        return masterJoinHandle(req)
+    else:
+        raise ConnectionError
 
 @app.route('/master/depart', methods=['POST'])
-def master_depart_callback():
-    req = request.get_json()
-    return masterDepartHandle(req)
+def master_depart_callback():  # V
+    if globals.SELF_MASTER:
+        req = request.form.to_dict()
+        return masterDepartHandle(req)
+    else:
+        raise ConnectionError
 
 @app.route('/node/updatePeerList', methods=['POST'])
-def node_updatePeerList_callback():
+def node_updatePeerList_callback():  # V
     req = request.form.to_dict()
     return nodeUpdatePeerListHandle(req)
 
 @app.route('/node/query', methods=['POST'])
 def node_query_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return nodeQueryHandle(req)
 
 @app.route('/node/insert', methods=['POST'])
 def node_insert_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return nodeInsertHandle(req)
 
 @app.route('/node/delete', methods=['POST'])
 def node_delete_callback():
-    req = request.get_json()
+    req = request.form.to_dict()
     return nodeDeleteHandle(req)
 
 
 if __name__ == '__main__':
 
-    print("\n")
-
     # get the port from the command line
-    if len(sys.argv) < 3 or sys.argv[1] not in ("-p", "-P"):
-        print("Tell me the port, e.g. -p 5000")
+    if len(sys.argv) < 3 or sys.argv[1] not in ('-p', '-P'):
+        print('Tell me the port, e.g. -p 5000')
         exit(0)
 
-    KARNAK_PORT = sys.argv[2]
+    port = sys.argv[2]
 
     # get the ip from the command line
-    KARNAK_IP = os.popen('ip addr show ' + NETIFACE +
-                         ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
-                         ).read().strip()
+    ip = os.popen('ip addr show ' + NETIFACE +
+                  ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
+                  ).read().strip()
 
-    if KARNAK_IP == KARNAK_MASTER_IP and KARNAK_PORT == KARNAK_MASTER_PORT:
+    if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
 
         # for the master node
-        print("I am the master node with ip: " + KARNAK_IP + " and port: " +
-              KARNAK_PORT)
+        print('I am the master node with ip: ' + ip + ' and port: ' + port)
 
-        MASTER_ID = hash(KARNAK_MASTER_IP + KARNAK_MASTER_PORT)
-        print("My id is: " + MASTER_ID)
+        globals.KARNAK_ID = hash(KARNAK_MASTER_IP + KARNAK_MASTER_PORT)
+        print('My id is: ' + globals.KARNAK_ID)
 
-        SELF_MASTER = True
+        globals.SELF_MASTER = True
 
         # Master is the first one to enter the list
-        # we need this list to create the PEERS_LIST dynamically
-        NODES_LIST = [{"nid": MASTER_ID, "ip": KARNAK_MASTER_IP,
-                      "port": KARNAK_MASTER_PORT}]
+        globals.PEER_LIST = [{"nid": globals.KARNAK_ID, "ip": KARNAK_MASTER_IP,
+                              "port": KARNAK_MASTER_PORT}]
 
     else:
 
-        SELF_MASTER = False
-        print("I am a normal Node with ip: " + KARNAK_IP + " and port "+
-              KARNAK_PORT)
+        globals.SELF_MASTER = False
+        print('I am a normal Node with ip: ' + ip + ' and port ' +
+              port)
 
-        KARNAK_ID = hash(KARNAK_IP + KARNAK_PORT)
-        print("My id is: " + KARNAK_ID)
-        print("\nJoining the chord...")
+        globals.KARNAK_ID = hash(ip + port)
+        print('My id is: ' + globals.KARNAK_ID)
+        print('\nJoining Chord...')
 
-        call_params = {
-            "nid": KARNAK_ID,
-            "ip": KARNAK_IP,
-            "port": KARNAK_PORT
+        join_req = {
+            "nid": globals.KARNAK_ID,
+            "ip": ip,
+            "port": port
         }
 
         try:
-            response = requests.post(HTTP + KARNAK_MASTER_IP + ":" +
-                                     KARNAK_MASTER_PORT + "/master/join",
-                                     call_params)
-            PEERS_LIST = response.content
+            response = requests.post(HTTP + KARNAK_MASTER_IP + ':' +
+                                     KARNAK_MASTER_PORT + '/master/join',
+                                     join_req)
+            globals.PEER_LIST = list(eval(response.text))
             if response.status_code == 200:
-                print("I got the response")
+                print('I got the response')
             else:
                 raise ConnectionRefusedError(f'status code: {response.status_code}')
         except ConnectionRefusedError as e:
-            print('\nSomething went wrong, '+e.args[0])
-            print("\nexiting...")
+            print('\nSomething went wrong, ' + e.args[0])
+            print('\nexiting...')
             exit(0)
 
-    print("\n")
+    print('\n')
 
     # run app in debug mode
-    app.run(debug=True, port=KARNAK_PORT, host=KARNAK_IP,
-            use_reloader=False)
+    app.run(debug=True, host=ip, port=port, use_reloader=False)
