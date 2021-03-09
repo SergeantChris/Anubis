@@ -24,12 +24,8 @@ def userOverlayHandle(req):
 
 def masterJoinHandle(req, node_list):
     node_list.append(req)
-    node_list = sorted(node_list, key = lambda i: (i['nid']))
-    # δεν λειτουργουν προς το παρων τα παρακατω
-    # node_index = node_list.index(req)
-    # print(node_index)
-    # remoteNodeUpdatePeerList(node_list[node_index - 1 : node_index + 2])
-    return "node joined"
+    node_list = sorted(node_list, key=lambda i: (i['nid']))
+    return tuple(node_list)
 
 def masterDepartHandle(req):
     return 'depart'
@@ -47,4 +43,4 @@ def nodeDeleteHandle(req):
     return 'delete'
 
 def hash(key):
-	return hashlib.sha1(key.encode('utf-8')).hexdigest()
+    return hashlib.sha1(key.encode('utf-8')).hexdigest()

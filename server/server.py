@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from utilities import *
 from config import *
+from globals import *
 import sys, os
 
 app = Flask(__name__)
@@ -8,7 +9,6 @@ app = Flask(__name__)
 # The API endpoints immediately redirect to their handlers, passing them the
 # JSON request object
 
-# No changes required in this file (yet)
 
 @app.route('/user/insert', methods=['POST'])
 def user_insert_callback():
@@ -37,7 +37,7 @@ def user_overlay_callback():
 
 @app.route('/master/join', methods=['POST'])
 def master_join_callback():
-    # form to dic because it didnt work with json
+    # form to dict because it didnt work with json
     req = request.form.to_dict()
     return masterJoinHandle(req, NODES_LIST)
 
@@ -68,20 +68,20 @@ def node_delete_callback():
 
 
 if __name__ == '__main__':
-    # run app in debug mode on port 5000
+
     print("\n")
 
-    if len(sys.argv) < 3:
+    # get the port from the command line
+    if len(sys.argv) < 3 or sys.argv[1] not in ("-p", "-P"):
         print("Tell me the port, e.g. -p 5000")
         exit(0)
 
-    # get the port from the command line
-    if sys.argv[1] in ("-p", "-P"):
-        KARNAK_PORT = sys.argv[2]
+    KARNAK_PORT = sys.argv[2]
 
     # get the ip from the command line
     KARNAK_IP = os.popen('ip addr show ' + NETIFACE +
-    ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\'').read().strip()
+                         ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
+                         ).read().strip()
 
     if KARNAK_IP == KARNAK_MASTER_IP and KARNAK_PORT == KARNAK_MASTER_PORT:
 
@@ -96,8 +96,8 @@ if __name__ == '__main__':
 
         # Master is the first one to enter the list
         # we need this list to create the PEERS_LIST dynamically
-        NODES_LIST = [{"nid":MASTER_ID, "ip":KARNAK_MASTER_IP,
-                      "port":KARNAK_MASTER_PORT}]
+        NODES_LIST = [{"nid": MASTER_ID, "ip": KARNAK_MASTER_IP,
+                      "port": KARNAK_MASTER_PORT}]
 
     else:
 
@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
         KARNAK_ID = hash(KARNAK_IP + KARNAK_PORT)
         print("My id is: " + KARNAK_ID)
-        print("\nJoing the chord...")
+        print("\nJoining the chord...")
 
         call_params = {
             "nid": KARNAK_ID,
@@ -119,19 +119,18 @@ if __name__ == '__main__':
             response = requests.post(HTTP + KARNAK_MASTER_IP + ":" +
                                      KARNAK_MASTER_PORT + "/master/join",
                                      call_params)
+            PEERS_LIST = response.content
             if response.status_code == 200:
-            	print("I got the response")
+                print("I got the response")
             else:
-            	print("Something went wrong: status code: " +
-                 response.status.code)
-            	print("\nexiting...")
-            	exit(0)
-        except:
-        	print("\nSomething went wrong: check if master is up and running")
-        	print("\nexiting...")
-        	exit(0)
+                raise ConnectionRefusedError(f'status code: {response.status_code}')
+        except ConnectionRefusedError as e:
+            print('\nSomething went wrong, '+e.args[0])
+            print("\nexiting...")
+            exit(0)
 
     print("\n")
 
-    app.run(debug = True, port = KARNAK_PORT, host = KARNAK_IP,
-     use_reloader=False)
+    # run app in debug mode
+    app.run(debug=True, port=KARNAK_PORT, host=KARNAK_IP,
+            use_reloader=False)

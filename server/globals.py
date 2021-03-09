@@ -1,4 +1,4 @@
-# This file contains all global variables that represent the state of th node
+# This file contains all global variables that represent the state of a node
 # in the network (e.g. a PeersList)
 
 SELF_MASTER = False
