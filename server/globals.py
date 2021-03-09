@@ -1,5 +1,6 @@
 # This file contains all global variables that represent the state of a node
-# in the network (e.g. a PeersList)
+# in the network (e.g. a PeerList)
 
-SELF_MASTER = False
-PEERS_LIST = []
+global SELF_MASTER
+global PEER_LIST
+global KARNAK_ID
