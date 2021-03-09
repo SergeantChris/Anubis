@@ -1,31 +1,42 @@
 import requests
+import sys
 
 # Client is executed locally
-url = 'http://127.0.0.1:5000'
+localhost = 'http://127.0.0.1'
 
 # TODO: define way to get parameters from command line (or file?)
 
+
 def cli_insert(param):
-    # construct the right json object and call the endpoint
     call_params = {}
-    requests.post(url + '/user/insert', call_params)
+    requests.post(localhost + '/user/insert', call_params)
 
 def cli_delete(param):
-    # construct the right json object and call the endpoint
     call_params = {}
-    requests.post(url + '/user/delete', call_params)
+    requests.post(localhost + '/user/delete', call_params)
 
 def cli_query(param):
-    # construct the right json object and call the endpoint
     call_params = {}
-    requests.post(url + '/user/query', call_params)
+    requests.post(localhost + '/user/query', call_params)
 
-def cli_depart(param):
-    # construct the right json object and call the endpoint
-    call_params = {}
-    requests.post(url + '/user/depart', call_params)
+def cli_depart(port):
+    requests.post(localhost + ':' + port + '/user/depart', {})
 
-def cli_overlay(param):
-    # construct the right json object and call the endpoint
-    call_params = {}
-    requests.post(url + '/user/overlay', call_params)
+def cli_overlay(port):
+    response = requests.post(localhost + ':' + port + '/user/overlay', {})
+    return response.text
+
+
+if __name__ == '__main__':
+
+    # get the port from the command line
+    if len(sys.argv) < 3 or sys.argv[1] not in ('-p', '-P'):
+        print('Tell me the port, e.g. -p 5000')
+        exit(0)
+
+    port = sys.argv[2]
+
+    # test call for depart
+    cli_depart(port)
+    # test call for overlay
+    #print(cli_overlay(port))
