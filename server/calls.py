@@ -1,20 +1,20 @@
 import requests
 from config import *
 
+
 # These functions are just wrappers to frequently used API calls for network communication
 
-def remoteNodeUpdatePeerList(ip, req):
-    x = requests.post('http://' + ip + ':' + KARNAK_PORT + '/node/updatePeerList', json=req)
-    return x
+def remoteNodeUpdatePeerList(ip, port, req):
+    return requests.post(HTTP + ip + ':' + port + '/node/updatePeerList', req)
 
-def remoteNodeQuery(ip, req):
-    x = requests.post('http://' + ip + ':' + KARNAK_PORT + 'node/query', json=req)
-    return x
 
-def remoteNodeInsert(ip, req):
-    x = requests.post('http://' + ip + ':' + KARNAK_PORT + 'node/insert', json=req)
-    return x
+def remoteNodeQuery(ip, port, req):
+    return requests.post(HTTP + ip + ':' + port + 'node/query', req)
 
-def remoteNodeDelete(ip, req):
-    x = requests.post('http://' + ip + ':' + KARNAK_PORT + 'node/delete', json=req)
-    return x
+
+def remoteNodeInsert(ip, port, req):
+    return requests.post(HTTP + ip + ':' + port + 'node/insert', req)
+
+
+def remoteNodeDelete(ip, port, req):
+    return requests.post(HTTP + ip + ':' + port + 'node/delete', req)
