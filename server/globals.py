@@ -4,3 +4,6 @@
 global SELF_MASTER
 global PEER_LIST
 global KARNAK_ID
+
+global NEXT_PEER
+global PREV_PEER

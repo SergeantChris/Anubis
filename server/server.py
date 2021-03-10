@@ -120,6 +120,7 @@ if __name__ == '__main__':
                                      KARNAK_MASTER_PORT + '/master/join',
                                      join_req)
             globals.PEER_LIST = list(eval(response.text))
+            calculate_neighbors()
             if response.status_code == 200:
                 print('I got the response')
             else:

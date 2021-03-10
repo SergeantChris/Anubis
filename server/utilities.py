@@ -6,12 +6,6 @@ from flask import request
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
-def shutdown_server():
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        raise RuntimeError('Not running with the Werkzeug Server')
-    func()
-
 def userInsertHandle(req):
     return 'insert'
 
@@ -30,12 +24,17 @@ def userDepartHandle():
     return 'Departing & Shutting down...'
 
 def userOverlayHandle():
-    return str(globals.PEER_LIST)
+    return {
+        "peers_list": globals.PEER_LIST,
+        "prev_peer": globals.PREV_PEER,
+        "next_peer": globals.NEXT_PEER
+    }
 
 def masterJoinHandle(req):
     prev_list = globals.PEER_LIST.copy()
     globals.PEER_LIST.append(req)
     globals.PEER_LIST.sort(key=lambda i: (i["nid"]))
+    calculate_neighbors()
     for peer in prev_list:
         # Update anyone but master (as master)
         if peer["nid"] != globals.KARNAK_ID:
@@ -48,6 +47,7 @@ def masterDepartHandle(req):
     # Update master's global peer list
     globals.PEER_LIST = new_list
     globals.PEER_LIST.sort(key=lambda i: (i["nid"]))
+    calculate_neighbors()
     # Master must not call his own /node/updatePeerList -- Flask will be locked as it is able to process only 1 request
     for peer in globals.PEER_LIST:
         # check if I am not hitting myself (as master)
@@ -58,6 +58,7 @@ def masterDepartHandle(req):
 
 def nodeUpdatePeerListHandle(req):
     globals.PEER_LIST = list(eval(req["new_list"]))
+    calculate_neighbors()
     print('Updated my peer list: ', str(globals.PEER_LIST))
     return 'updated peer list'
 
@@ -70,5 +71,36 @@ def nodeInsertHandle(req):
 def nodeDeleteHandle(req):
     return 'delete'
 
+
+### HELPER FUNCTIONS START ###
+
 def hash(key):
     return hashlib.sha1(key.encode('utf-8')).hexdigest()
+
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
+def calculate_neighbors():
+    # Note: Peer list is always shorted
+    max_index = len(globals.PEER_LIST) - 1
+    my_index = -1
+    for i in range(max_index + 1):
+        if globals.PEER_LIST[i]['nid'] == globals.KARNAK_ID:
+            my_index = i
+    if max_index == -1 or my_index == -1:
+        raise RuntimeError('Invalid peer list while calculating neighbors')
+    prev_index = my_index - 1
+    next_index = my_index + 1
+    # Edge cases for circular behavior
+    if my_index == 0:
+        prev_index = max_index
+    if my_index == max_index:
+        next_index = 0
+    globals.PREV_PEER = globals.PEER_LIST[prev_index]
+    globals.NEXT_PEER = globals.PEER_LIST[next_index]
+    print('Calculated my neighbors: ' + str(prev_index) + ' & ' + str(next_index))
+
+### HELPER FUNCTIONS END ###
