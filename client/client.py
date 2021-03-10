@@ -26,7 +26,7 @@ def cli_depart(port):
 
 def cli_overlay(port):
     response = requests.post(localhost + ':' + port + '/user/overlay', {})
-    return response.text
+    return eval(response.text)
 
 
 if __name__ == '__main__':
@@ -43,6 +43,6 @@ if __name__ == '__main__':
         print(cli_depart(port))
 
     if action == 'overlay':
-        pprint(list(eval(cli_overlay(port))))
+        pprint(cli_overlay(port))
     
     exit(0)
