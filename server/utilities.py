@@ -7,7 +7,28 @@ from flask import request
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
 def userInsertHandle(req):
-    return 'insert'
+
+    sid = req['sid']
+
+    if sid <= globals.KARNAK_ID and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
+        # i am the node with the smallest id and the song is mine
+        response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+
+    elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
+        # i am the node with the smallest id and the song is mine 2
+        response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+
+    elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
+        print("\n yay \n")
+        # this song belongs to me
+        response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+
+    else:
+        # passing it
+        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                 ':' + globals.NEXT_PEER['port'] +
+                                 '/user/insert', req)
+    return response.text
 
 def userDeleteHandle(req):
     return 'delete'
@@ -16,6 +37,7 @@ def userQueryHandle(req):
     return 'query'
 
 def userDepartHandle():
+    # has to re-arrange the songs before it goes
     depart = globals.KARNAK_ID
     # Only inform master about who you are, he will calculate the new list (issue with concurrent departs)
     # See below on "masterDepartHandle"
@@ -66,7 +88,9 @@ def nodeQueryHandle(req):
     return 'query'
 
 def nodeInsertHandle(req):
-    return 'insert'
+    globals.SONG_LIST.append(req)
+    print(globals.SONG_LIST)
+    return 'The song is added in node with ip ' + globals.KARNAK_IP + "and port " + globals.KARNAK_PORT
 
 def nodeDeleteHandle(req):
     return 'delete'

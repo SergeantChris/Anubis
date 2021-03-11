@@ -85,6 +85,10 @@ if __name__ == '__main__':
                   ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
                   ).read().strip()
 
+    globals.KARNAK_PORT = port
+    globals.KARNAK_IP = ip
+    globals.SONG_LIST = []
+
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
 
         # for the master node

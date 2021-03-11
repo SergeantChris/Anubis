@@ -4,6 +4,11 @@
 global SELF_MASTER
 global PEER_LIST
 global KARNAK_ID
+# we use the port and ip in insert, don't delete
+global KARNAK_PORT
+global KARNAK_IP
 
 global NEXT_PEER
 global PREV_PEER
+
+global SONG_LIST
