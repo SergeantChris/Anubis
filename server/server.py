@@ -70,6 +70,11 @@ def node_delete_callback():
     req = request.form.to_dict()
     return nodeDeleteHandle(req)
 
+@app.route('/node/receive', methods=['POST'])
+def node_receive_callback():
+    req = request.form.to_dict()
+    return nodeReceiveHandle(req)
+
 
 if __name__ == '__main__':
 
@@ -87,7 +92,8 @@ if __name__ == '__main__':
 
     globals.KARNAK_PORT = port
     globals.KARNAK_IP = ip
-    globals.SONG_LIST = []
+    globals.SONG_LIST = {}
+    globals.DOWNLOADED_LIST = {}
 
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
 

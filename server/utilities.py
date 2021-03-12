@@ -6,35 +6,17 @@ from flask import request
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
-def userInsertHandle(req):
+# To be deleted
+# def userInsertHandle(req):
+#   return response.text
 
-    sid = req['sid']
+# To be deleted
+# def userDeleteHandle(req):
+#     return 'delete'
 
-    if sid <= globals.KARNAK_ID and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
-        # i am the node with the smallest id and the song is mine
-        response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
-
-    elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
-        # i am the node with the smallest id and the song is mine 2
-        response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
-
-    elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
-        print("\n yay \n")
-        # this song belongs to me
-        response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
-
-    else:
-        # passing it
-        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
-                                 ':' + globals.NEXT_PEER['port'] +
-                                 '/user/insert', req)
-    return response.text
-
-def userDeleteHandle(req):
-    return 'delete'
-
-def userQueryHandle(req):
-    return 'query'
+# To be deleted
+# def userQueryHandle(req):
+#     return 'query'
 
 def userDepartHandle():
     # has to re-arrange the songs before it goes
@@ -85,15 +67,80 @@ def nodeUpdatePeerListHandle(req):
     return 'updated peer list'
 
 def nodeQueryHandle(req):
-    return 'query'
+    requester = req['requester']
+    song_name = req['song_name']
+
+    # if I am the node introducing the request
+    if requester == 'you':
+        new_req = {
+            'song_name': song_name,
+            'requester': globals.KARNAK_ID,
+            'requester_ip': globals.KARNAK_IP,
+            'requester_port': globals.KARNAK_PORT
+        }
+        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                ':' + globals.NEXT_PEER['port'] +
+                                '/node/query', new_req)
+        # Return to the CLI
+        if response == 'ok':
+            return globals.DOWNLOADED_LIST[song_name]
+        else:
+            return response.text
+    # if the request made a full cycle
+    if requester == globals.KARNAK_ID:
+        return 'not found in network'
+    
+    # if I have the song
+    if song_name in globals.SONG_LIST:
+        requester_ip = req['requester_ip']
+        requester_port = req['requester_port']
+        song = globals.SONG_LIST[song_name]
+        # create response object containing both song and my id
+        resp = {
+            'sid': song['sid'],
+            'key': song['key'],
+            'value': song['value'],
+            'received_by': globals.KARNAK_ID
+        }
+        response = requests.post(HTTP + requester_ip +
+                                ':' + requester_port +
+                                '/node/receive', resp)
+        return 'ok'
+    # if I don't have the song
+    else:
+        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                ':' + globals.NEXT_PEER['port'] +
+                                '/node/query', req)
+        return response.text
 
 def nodeInsertHandle(req):
-    globals.SONG_LIST.append(req)
-    print(globals.SONG_LIST)
+    sid = req['sid']
+
+    if sid <= globals.KARNAK_ID and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
+        # i am the node with the smallest id and the song is mine
+        add_to_global_song_list(req)
+
+    elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
+        # i am the node with the smallest id and the song is mine 2
+        add_to_global_song_list(req)
+
+    elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
+        add_to_global_song_list(req)
+
+    else:
+        # passing request to next
+        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                 ':' + globals.NEXT_PEER['port'] +
+                                 '/node/insert', req)
+        return 'ok'
     return 'The song is added in node with ip ' + globals.KARNAK_IP + "and port " + globals.KARNAK_PORT
 
 def nodeDeleteHandle(req):
     return 'delete'
+
+def nodeReceiveHandle(req):
+    globals.DOWNLOADED_LIST[req['key']] = req
+    return 'thamk you'
 
 
 ### HELPER FUNCTIONS START ###
@@ -111,11 +158,13 @@ def calculate_neighbors():
     # Note: Peer list is always shorted
     max_index = len(globals.PEER_LIST) - 1
     my_index = -1
+    # Find my index in the list
     for i in range(max_index + 1):
         if globals.PEER_LIST[i]['nid'] == globals.KARNAK_ID:
             my_index = i
     if max_index == -1 or my_index == -1:
         raise RuntimeError('Invalid peer list while calculating neighbors')
+    # Calculate neighbors
     prev_index = my_index - 1
     next_index = my_index + 1
     # Edge cases for circular behavior
@@ -126,5 +175,10 @@ def calculate_neighbors():
     globals.PREV_PEER = globals.PEER_LIST[prev_index]
     globals.NEXT_PEER = globals.PEER_LIST[next_index]
     print('Calculated my neighbors: ' + str(prev_index) + ' & ' + str(next_index))
+
+def add_to_global_song_list(req):
+    globals.SONG_LIST[req['key']] = req
+    print('Updated my global song list:')
+    print(globals.SONG_LIST)
 
 ### HELPER FUNCTIONS END ###

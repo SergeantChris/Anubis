@@ -16,7 +16,7 @@ def cli_insert(port, ip, param):
     id =  hash(ip + port)
     # call_params = param.copy()
     # call_params['origin'] = id
-    response = requests.post(localhost + ':' + port + '/user/insert', param)
+    response = requests.post(localhost + ':' + port + '/node/insert', param)
     return response.text
 
 def cli_delete(port, param):
@@ -24,8 +24,7 @@ def cli_delete(port, param):
     requests.post(localhost + '/user/delete', call_params)
 
 def cli_query(port, param):
-    call_params = {}
-    requests.post(localhost + '/user/query', call_params)
+    requests.post(localhost + ':' + port + '/node/query', param)
 
 def cli_depart(port):
     response = requests.post(localhost + ':' + port + '/user/depart', {})
@@ -61,10 +60,21 @@ if __name__ == '__main__':
 
         elif action[:7] == 'insert,':
             insert_list = action.split(", ")
+            print('insert list:')
+            pprint(insert_list)
             song_id = hash(insert_list[1])
             song_deats = {"sid": song_id, "key": insert_list[1],
                                   "value": insert_list[2]}
             print(cli_insert(port, ip, song_deats))
+        
+        elif action[:6] == 'query,':
+            query_list = action.split(", ")
+            song_name = query_list[1]
+            req = {
+                'song_name': song_name,
+                'requester': 'you'
+            }
+            print(cli_query(port, req))
 
         elif action == "exit":
             exit(0)
