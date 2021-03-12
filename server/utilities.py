@@ -19,7 +19,6 @@ def userInsertHandle(req):
         response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
 
     elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
-        print("\n yay \n")
         # this song belongs to me
         response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
 
@@ -31,7 +30,27 @@ def userInsertHandle(req):
     return response.text
 
 def userDeleteHandle(req):
-    return 'delete'
+
+    sid = req['sid']
+
+    if sid <= globals.KARNAK_ID and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
+        # i am the node with the smallest id and I have the song
+        response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+
+    elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
+        # i am the node with the smallest id and I have the song 2
+        response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+
+    elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
+        # I have the song
+        response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+
+    else:
+        # passing the request
+        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                 ':' + globals.NEXT_PEER['port'] +
+                                 '/user/delete', req)
+    return response.text
 
 def userQueryHandle(req):
     return 'query'
@@ -88,12 +107,29 @@ def nodeQueryHandle(req):
     return 'query'
 
 def nodeInsertHandle(req):
-    globals.SONG_LIST.append(req)
+
+    update = 0
+    for dict in globals.SONG_LIST:
+        if dict["key"] == req["key"]:
+            # update a song in the list
+            update = 1
+            dict["value"] = req["value"]
+            break
+    if update == 0:
+        # insert a new song
+        globals.SONG_LIST.append(req)
+
     print(globals.SONG_LIST)
-    return 'The song is added in node with ip ' + globals.KARNAK_IP + "and port " + globals.KARNAK_PORT
+    return 'The song is added in node with ip ' + globals.KARNAK_IP + " and port " + globals.KARNAK_PORT
 
 def nodeDeleteHandle(req):
-    return 'delete'
+
+    for dict in globals.SONG_LIST:
+        if dict["sid"] == req["sid"]:
+            globals.SONG_LIST.remove(dict)
+
+    print(globals.SONG_LIST)
+    return 'The song is not longer in the network'
 
 
 ### HELPER FUNCTIONS START ###

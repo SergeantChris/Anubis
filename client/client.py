@@ -14,14 +14,13 @@ def hash(key):
 
 def cli_insert(port, ip, param):
     id =  hash(ip + port)
-    # call_params = param.copy()
-    # call_params['origin'] = id
     response = requests.post(localhost + ':' + port + '/user/insert', param)
     return response.text
 
-def cli_delete(port, param):
-    call_params = {}
-    requests.post(localhost + '/user/delete', call_params)
+def cli_delete(port, ip, song_id):
+    call_params = {"sid": song_id}
+    response = requests.post(localhost + ':' + port + '/user/delete', call_params)
+    return response.text
 
 def cli_query(port, param):
     call_params = {}
@@ -65,6 +64,11 @@ if __name__ == '__main__':
             song_deats = {"sid": song_id, "key": insert_list[1],
                                   "value": insert_list[2]}
             print(cli_insert(port, ip, song_deats))
+
+        elif action[:7] == "delete,":
+            delete_list = action.split(", ")
+            song_id = hash(delete_list[1])
+            print(cli_delete(port, ip, song_id))
 
         elif action == "exit":
             exit(0)
