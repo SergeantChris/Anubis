@@ -10,17 +10,6 @@ app = Flask(__name__)
 # The API endpoints immediately redirect to their handlers, passing them the
 # dict request object
 
-
-@app.route('/user/insert', methods=['POST'])
-def user_insert_callback():
-    req = request.form.to_dict()
-    return userInsertHandle(req)
-
-@app.route('/user/delete', methods=['POST'])
-def user_delete_callback():
-    req = request.form.to_dict()
-    return userDeleteHandle(req)
-
 @app.route('/user/query', methods=['POST'])
 def user_query_callback():
     req = request.form.to_dict()
@@ -70,6 +59,11 @@ def node_delete_callback():
     req = request.form.to_dict()
     return nodeDeleteHandle(req)
 
+@app.route('/node/receive', methods=['POST'])
+def node_receive_callback():
+    req = request.form.to_dict()
+    return nodeReceiveHandle(req)
+
 
 if __name__ == '__main__':
 
@@ -87,7 +81,8 @@ if __name__ == '__main__':
 
     globals.KARNAK_PORT = port
     globals.KARNAK_IP = ip
-    globals.SONG_LIST = []
+    globals.SONG_LIST = {}
+    globals.DOWNLOADED_LIST = {}
 
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
 

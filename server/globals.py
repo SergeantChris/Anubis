@@ -12,3 +12,4 @@ global NEXT_PEER
 global PREV_PEER
 
 global SONG_LIST
+global DOWNLOADED_LIST
