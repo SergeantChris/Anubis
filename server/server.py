@@ -9,22 +9,32 @@ app = Flask(__name__)
 
 # The API endpoints immediately redirect to their handlers, passing them the
 # dict request object
+"""
+@app.route('/user/insert', methods=['POST'])
+def user_insert_callback():
+    req = request.form.to_dict()
+    return userInsertHandle(req)
+
+@app.route('/user/delete', methods=['POST'])
+def user_delete_callback():
+    req = request.form.to_dict()
+    return userDeleteHandle(req)
 
 @app.route('/user/query', methods=['POST'])
 def user_query_callback():
     req = request.form.to_dict()
     return userQueryHandle(req)
-
+"""
 @app.route('/user/depart', methods=['POST'])
-def user_depart_callback():  # V
+def user_depart_callback():
     return userDepartHandle()
 
 @app.route('/user/overlay', methods=['POST'])
-def user_overlay_callback():  # V
+def user_overlay_callback():
     return userOverlayHandle()
 
 @app.route('/master/join', methods=['POST'])
-def master_join_callback():  # V
+def master_join_callback():
     if globals.SELF_MASTER:
         req = request.form.to_dict()
         return masterJoinHandle(req)
@@ -32,7 +42,7 @@ def master_join_callback():  # V
         raise ConnectionError
 
 @app.route('/master/depart', methods=['POST'])
-def master_depart_callback():  # V
+def master_depart_callback():
     if globals.SELF_MASTER:
         req = request.form.to_dict()
         return masterDepartHandle(req)
@@ -40,7 +50,7 @@ def master_depart_callback():  # V
         raise ConnectionError
 
 @app.route('/node/updatePeerList', methods=['POST'])
-def node_updatePeerList_callback():  # V
+def node_updatePeerList_callback():
     req = request.form.to_dict()
     return nodeUpdatePeerListHandle(req)
 
@@ -81,7 +91,7 @@ if __name__ == '__main__':
 
     globals.KARNAK_PORT = port
     globals.KARNAK_IP = ip
-    globals.SONG_LIST = {}
+    globals.SONG_DICT = {}
     globals.DOWNLOADED_LIST = {}
 
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:

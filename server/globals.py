@@ -11,5 +11,5 @@ global KARNAK_IP
 global NEXT_PEER
 global PREV_PEER
 
-global SONG_LIST
+global SONG_DICT
 global DOWNLOADED_LIST

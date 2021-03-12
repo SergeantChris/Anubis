@@ -62,26 +62,26 @@ if __name__ == '__main__':
             pprint(insert_list)
             song_id = hash(insert_list[1])
             song_deats = {"sid": song_id, "key": insert_list[1],
-                                  "value": insert_list[2]}
+                          "value": insert_list[2]}
             print(cli_insert(port, ip, song_deats))
 
         elif action[:6] == 'query,':
             query_list = action.split(", ")
             song_name = query_list[1]
             req = {
-                'song_name': song_name,
-                'requester': 'you'
+                "song_name": song_name,
+                "requester": 'you'
             }
             print(cli_query(port, req))
 
-        elif action[:7] == "delete,":
+        elif action[:7] == 'delete,':
             delete_list = action.split(", ")
             song_id = hash(delete_list[1])
-            song_deats = {"sid": song_id, "key": insert_list[1]}
+            song_deats = {"sid": song_id, "key": delete_list[1]}
             print(cli_delete(port, ip, song_deats))
 
-        elif action == "exit":
+        elif action == 'exit':
             exit(0)
 
         else:
-            print("Invalid input. Try help!")
+            print('Invalid input. Try help!')
