@@ -4,7 +4,8 @@ from config import *
 import globals
 import sys
 import os
-
+import threading
+import time
 
 app = Flask(__name__)
 
@@ -60,10 +61,9 @@ def node_receive_callback():
     req = request.form.to_dict()
     return nodeReceiveHandle(req)
 
-
-if __name__ == '__main__':
-
+def init():
     # get the port from the command line
+    time.sleep(1)
     if len(sys.argv) < 3 or sys.argv[1] not in ('-p', '-P'):
         print('Tell me the port, e.g. -p 5000')
         exit(0)
@@ -124,8 +124,20 @@ if __name__ == '__main__':
             print('\nSomething went wrong, ' + e.args[0])
             print('\nexiting...')
             exit(0)
-
     print('\n')
 
+def server_run():
     # run app in debug mode
+    port = sys.argv[2]
+
+    # get the ip from the command line
+    ip = os.popen('ip addr show ' + NETIFACE +
+                  ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
+                  ).read().strip()
     app.run(debug=True, host=ip, port=port, use_reloader=False)
+
+if __name__ == '__main__':
+    t1 = threading.Thread(target=init, args=())
+    t2 = threading.Thread(target=server_run, args=())
+    t1.start()
+    t2.start()

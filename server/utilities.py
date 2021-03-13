@@ -70,6 +70,9 @@ def nodeUpdatePeerListHandle(req):
     if req["action"] == 'join':
         if globals.PREV_PEER["nid"] == req["actor_id"]:
             new_owner = globals.PREV_PEER
+            remoteNodeUpdatePeerList(new_owner["ip"], new_owner["port"], {"new_list": str(globals.PEER_LIST),
+                                                                          "action": 'join',
+                                                                          "actor_id": req["actor_id"]})
             expendable_copy = globals.SONG_DICT.copy()
             while expendable_copy:
                 key, song = expendable_copy.popitem()
