@@ -232,7 +232,6 @@ def calculate_neighbors():
         next_index = 0
     globals.PREV_PEER = globals.PEER_LIST[prev_index]
     globals.NEXT_PEER = globals.PEER_LIST[next_index]
-    print('Calculated my neighbors: ' + str(prev_index) + ' & ' + str(next_index))
 
 
 def add_to_global_SONG_DICT(req):

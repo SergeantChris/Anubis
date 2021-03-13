@@ -102,7 +102,6 @@ def init():
 
         globals.KARNAK_ID = hash(ip + port)
         print('My id is: ' + globals.KARNAK_ID)
-        print('\nJoining Chord...')
 
         join_req = {
             "nid": globals.KARNAK_ID,
@@ -117,7 +116,7 @@ def init():
             globals.PEER_LIST = list(eval(response.text))
             calculate_neighbors()
             if response.status_code == 200:
-                print('I got the response')
+                print('**Joined Chord**')
             else:
                 raise ConnectionRefusedError(f'status code: {response.status_code}')
         except ConnectionRefusedError as e:
