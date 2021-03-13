@@ -22,7 +22,8 @@ def cli_delete(port, ip, song_deats):
     return response.text
 
 def cli_query(port, param):
-    requests.post(localhost + ':' + port + '/node/query', param)
+    response = requests.post(localhost + ':' + port + '/node/query', param)
+    return response.text
 
 def cli_depart(port):
     response = requests.post(localhost + ':' + port + '/user/depart', {})

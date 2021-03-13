@@ -5,26 +5,12 @@ import globals
 import sys
 import os
 
+
 app = Flask(__name__)
 
 # The API endpoints immediately redirect to their handlers, passing them the
 # dict request object
-"""
-@app.route('/user/insert', methods=['POST'])
-def user_insert_callback():
-    req = request.form.to_dict()
-    return userInsertHandle(req)
 
-@app.route('/user/delete', methods=['POST'])
-def user_delete_callback():
-    req = request.form.to_dict()
-    return userDeleteHandle(req)
-
-@app.route('/user/query', methods=['POST'])
-def user_query_callback():
-    req = request.form.to_dict()
-    return userQueryHandle(req)
-"""
 @app.route('/user/depart', methods=['POST'])
 def user_depart_callback():
     return userDepartHandle()
