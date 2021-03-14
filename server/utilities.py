@@ -10,10 +10,35 @@ import time
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
 def userInsertHandle(req):
-    return 'todo'
+
+    req["requester_ip"] = globals.KARNAK_IP
+    req["requester_port"] = globals.KARNAK_PORT
+
+    t = threading.Thread(target=insert_thread, args=(req, ))
+    t.start()
+    print("i threaded")
+    while globals.found_it == False:
+        time.sleep(0.1)
+    globals.found_it = False
+    time.sleep(0.1)
+    return "The song is added in the network."
+    t.join()
 
 def userDeleteHandle(req):
-    return 'todo'
+
+    req["requester_ip"] = globals.KARNAK_IP
+    req["requester_port"] = globals.KARNAK_PORT
+
+    t = threading.Thread(target=delete_thread, args=(req, ))
+    t.start()
+    print("i threaded")
+    while globals.found_it == False:
+        time.sleep(0.1)
+    globals.found_it = False
+    time.sleep(0.1)
+    return "The song is deleted from the network."
+    t.join()
+
 
 def userQueryHandle(req):
     song_name = req["song_name"]
@@ -22,10 +47,12 @@ def userQueryHandle(req):
     print("i threaded")
     while globals.found_it == False:
         time.sleep(0.1)
-    print(globals.found_it, globals.DOWNLOADED_LIST)
     globals.found_it = False
     time.sleep(0.1)
-    return globals.DOWNLOADED_LIST[song_name]
+    if song_name == "*":
+        return globals.ALL_SONGS
+    else:
+        return globals.DOWNLOADED_LIST[song_name]
     t.join()
 
 def userDepartHandle():
@@ -111,101 +138,101 @@ def nodeQueryHandle(req):
     song_name = req['song_name']
 
     # I just want one specific song
-    # if song_name != "*":
+    if song_name != "*":
+        # if I am the node introducing the request
+        if requester == 'you':
+            if song_name in globals.SONG_DICT:
+                song = globals.SONG_DICT[song_name]
+                song['sender_id'] = globals.KARNAK_ID
+                song['sender_ip'] = globals.KARNAK_IP
+                song['sender_port'] = globals.KARNAK_PORT
+                globals.DOWNLOADED_LIST[song_name] = song
+                globals.found_it = True
+                response = type('response', (object, ), {'text': 'ok'})
+            else:
+                print("I am not so lucky")
+                new_req = {
+                    "song_name": song_name,
+                    "requester": globals.KARNAK_ID,
+                    "requester_ip": globals.KARNAK_IP,
+                    "requester_port": globals.KARNAK_PORT
+                }
+                response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                        ':' + globals.NEXT_PEER['port'] +
+                                        '/node/query', new_req)
+            # Return to the CLI
+            return {
+                'msg': response.text
+            }
+        # if the request made a full cycle
+        if requester == globals.KARNAK_ID:
+            return 'not found in network'
 
-    # if I am the node introducing the request
-    if requester == 'you':
+        # if I have the song
         if song_name in globals.SONG_DICT:
-            print("I am lucky")
+            print("I have the song")
+            requester_ip = req['requester_ip']
+            requester_port = req['requester_port']
             song = globals.SONG_DICT[song_name]
+            # create response object containing both song and my id\
             song['sender_id'] = globals.KARNAK_ID
             song['sender_ip'] = globals.KARNAK_IP
             song['sender_port'] = globals.KARNAK_PORT
-            globals.DOWNLOADED_LIST[song_name] = song
-            response = type('response', (object, ), {'text': 'ok'})
+            song["request"] = "query"
+            response = requests.post(HTTP + requester_ip +
+                                    ':' + requester_port +
+                                    '/node/receive', song)
+            if response.text == 'thamk you':
+                return 'ok'
+            else:
+                return 'error while transmitting song'
+        # if I don't have the song
         else:
-            print("I am not so lucky")
-            new_req = {
-                "song_name": song_name,
-                "requester": globals.KARNAK_ID,
-                "requester_ip": globals.KARNAK_IP,
-                "requester_port": globals.KARNAK_PORT
-            }
             response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
                                     ':' + globals.NEXT_PEER['port'] +
-                                    '/node/query', new_req)
-        # Return to the CLI
-        return {
-            'msg': response.text
-        }
-    # if the request made a full cycle
-    if requester == globals.KARNAK_ID:
-        print("not found it")
-        return 'not found in network'
+                                    '/node/query', req)
+            return response.text
 
-    # if I have the song
-    if song_name in globals.SONG_DICT:
-        print("I have the song")
-        requester_ip = req['requester_ip']
-        requester_port = req['requester_port']
-        song = globals.SONG_DICT[song_name]
-        # create response object containing both song and my id\
-        song['sender_id'] = globals.KARNAK_ID
-        song['sender_ip'] = globals.KARNAK_IP
-        song['sender_port'] = globals.KARNAK_PORT
-        response = requests.post(HTTP + requester_ip +
-                                ':' + requester_port +
-                                '/node/receive', song)
-        if response.text == 'thamk you':
-            return 'ok'
-        else:
-            return 'error while transmitting song'
-    # if I don't have the song
+    # I want to know all songs (every song per node)
     else:
-        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
-                                ':' + globals.NEXT_PEER['port'] +
-                                '/node/query', req)
-        return response.text
-    #
-    # # I want to know all songs (every song per node)
-    # else:
-    #      # if I am the node introducing the request
-    #      if requester == 'you':
-    #          songs_per_node = {"song_name": "*",
-    #                            globals.KARNAK_ID: globals.SONG_DICT,
-    #                            "requester": globals.KARNAK_ID,
-    #                            "requester_ip": globals.KARNAK_IP,
-    #                            "requester_port": globals.KARNAK_PORT
-    #          }
-    #          response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
-    #                                   ':' + globals.NEXT_PEER['port'] +
-    #                                   '/node/query', songs_per_node)
-    #          # Return to the CLI
-    #          return {
-    #              'msg': response.text
-    #          }
-    #
-    #      # if the request made a full cycle
-    #      elif requester == globals.NEXT_PEER["nid"]:
-    #          requester_ip = req['requester_ip']
-    #          requester_port = req['requester_port']
-    #          req[globals.KARNAK_ID] = globals.SONG_DICT
-    #          response = requests.post(HTTP + requester_ip +
-    #                                  ':' + requester_port +
-    #                                  '/node/receive', req)
-    #          if response.text == 'thamk you':
-    #              return 'ok'
-    #          else:
-    #              return 'error while transmitting request'
-    #
-    #      else:
-    #         req[globals.KARNAK_ID] = globals.SONG_DICT
-    #         response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
-    #                                 ':' + globals.NEXT_PEER['port'] +
-    #                                 '/node/query', req)
-    #         return response.text
-    #
-    #     if requester == globals.KARNAK_ID:
+         # if I am the node introducing the request
+         if requester == 'you':
+             songs_per_node = {"song_name": "*",
+                               globals.KARNAK_ID: globals.SONG_DICT,
+                               "requester": globals.KARNAK_ID,
+                               "requester_ip": globals.KARNAK_IP,
+                               "requester_port": globals.KARNAK_PORT
+             }
+             response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                      ':' + globals.NEXT_PEER['port'] +
+                                      '/node/query', songs_per_node)
+             # Return to the CLI
+             return {
+                 'msg': response.text
+             }
+
+         # if the request made a full cycle
+         elif requester == globals.NEXT_PEER["nid"]:
+             requester_ip = req['requester_ip']
+             requester_port = req['requester_port']
+             req[globals.KARNAK_ID] = globals.SONG_DICT
+             req["request"] = "query"
+
+             # the req dict is wrong - I ll fix it later
+             response = requests.post(HTTP + requester_ip +
+                                     ':' + requester_port +
+                                     '/node/receive', req)
+             if response.text == 'thamk you':
+                 return 'ok'
+             else:
+                 return 'error while transmitting request'
+
+         else:
+            req[globals.KARNAK_ID] = globals.SONG_DICT
+            response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+                                    ':' + globals.NEXT_PEER['port'] +
+                                    '/node/query', req)
+            return response.text
 
 def nodeInsertHandle(req):
     sid = req['sid']
@@ -255,7 +282,19 @@ def nodeDeleteHandle(req):
     return 'The song is not longer in the network'
 
 def nodeReceiveHandle(req):
-    globals.DOWNLOADED_LIST[req['key']] = req
+    request = req["request"]
+    if request == "query" :
+        if "song_name" in req:
+            # is query *
+            globals.ALL_SONGS = req
+        else:
+            song = {}
+            song["key"] = req["key"]
+            song["value"] = req["value"]
+            song["sender_ip"] = req["sender_ip"]
+            song["sender_port"] = req["sender_port"]
+            globals.DOWNLOADED_LIST[req['key']] = song
+
     globals.found_it = True
     return 'thamk you'
 
@@ -297,8 +336,20 @@ def calculate_neighbors():
 
 def add_to_global_SONG_DICT(req):
     globals.SONG_DICT[req['key']] = req
-    print(f'Added {req["key"]} to my global song list:')
-    pprint(globals.SONG_DICT)
+
+    requester_ip = req["requester_ip"]
+    requester_port = req["requester_port"]
+    param = {"request": "insert"}
+    response = requests.post(HTTP + requester_ip +
+                            ':' + requester_port +
+                            '/node/receive', param)
+
+    if response.text == 'thamk you':
+        print(f'Added {req["key"]} to my global song list:')
+        pprint(globals.SONG_DICT)
+        return 'ok'
+    else:
+        return 'error while transmitting song'
 
 
 def delete_song(req):
@@ -306,8 +357,23 @@ def delete_song(req):
     print(f'Deleted {req["key"]} from my global song list:')
     pprint(globals.SONG_DICT)
 
+    requester_ip = req["requester_ip"]
+    requester_port = req["requester_port"]
+    param = {"request": "delete"}
+    response = requests.post(HTTP + requester_ip +
+                            ':' + requester_port +
+                            '/node/receive', param)
+
 def query_thread(req):
     response = remoteNodeQuery(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+    return response.text
+
+def insert_thread(req):
+    response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+    return response.text
+
+def delete_thread(req):
+    response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)
     return response.text
 
 ### HELPER FUNCTIONS END ###

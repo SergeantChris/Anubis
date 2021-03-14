@@ -14,5 +14,8 @@ global PREV_PEER
 global SONG_DICT
 global DOWNLOADED_LIST
 
+# for query *
+global ALL_SONGS
+
 # flag for threaded requests
 global found_it
