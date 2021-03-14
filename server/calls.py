@@ -15,3 +15,6 @@ def remoteNodeInsert(ip, port, req):
 
 def remoteNodeDelete(ip, port, req):
     return requests.post(HTTP + ip + ':' + port + '/node/delete', req)
+
+def remoteNodeReceive(ip, port, req):
+    return requests.post(HTTP + ip + ':' + port + '/node/receive', req)

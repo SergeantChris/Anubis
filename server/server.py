@@ -1,11 +1,13 @@
 from flask import Flask, request
 from utilities import *
 from config import *
+import config
 import globals
 import sys
 import os
 import threading
 import time
+import signal
 
 app = Flask(__name__)
 
@@ -75,62 +77,57 @@ def node_receive_callback():
     req = request.form.to_dict()
     return nodeReceiveHandle(req)
 
-def init():
+
+def net_init():
     # get the port from the command line
     time.sleep(1)
-    if len(sys.argv) < 3 or sys.argv[1] not in ('-p', '-P'):
-        print('Tell me the port, e.g. -p 5000')
-        exit(0)
-
     port = sys.argv[2]
-
     # get the ip from the command line
     ip = os.popen('ip addr show ' + NETIFACE +
                   ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
                   ).read().strip()
-
     globals.KARNAK_PORT = port
     globals.KARNAK_IP = ip
     globals.SONG_DICT = {}
     globals.DOWNLOADED_LIST = {}
     globals.found_it = False
-
-
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
-
-        # for the master node
+        globals.SELF_MASTER = True
+        if len(sys.argv) < 6 or sys.argv[3] != '-k' or sys.argv[5] not in ('-l', '-e'):
+            print('Please specify replication factor, e.g. -k 2')
+            print('Please specify replica consistency mode, -l for linearizability, -e for eventual')
+            os.kill(os.getpid(), signal.SIGINT)
+        config.REP_K = int(sys.argv[4])
+        if sys.argv[5] == '-l':
+            config.CONSISTENCY_MODE = 'l'
+        elif sys.argv[5] == '-e':
+            config.CONSISTENCY_MODE = 'e'
         print('I am the master node with ip: ' + ip + ' and port: ' + port)
-
         globals.KARNAK_ID = hash(KARNAK_MASTER_IP + KARNAK_MASTER_PORT)
         print('My id is: ' + globals.KARNAK_ID)
-
-        globals.SELF_MASTER = True
-
+        print(f'Network is set up with file replication factor k={config.REP_K} '
+              f'and {config.CONSISTENCY_MODE} consistency mode')
+        if config.CONSISTENCY_MODE == 'l':
+            print('Linearizability is implemented via chain replication')
         # Master is the first one to enter the list
         globals.PEER_LIST = [{"nid": globals.KARNAK_ID, "ip": KARNAK_MASTER_IP,
                               "port": KARNAK_MASTER_PORT}]
-
     else:
-
         globals.SELF_MASTER = False
         print('I am a normal Node with ip: ' + ip + ' and port ' +
               port)
-
         globals.KARNAK_ID = hash(ip + port)
         print('My id is: ' + globals.KARNAK_ID)
-
         join_req = {
             "nid": globals.KARNAK_ID,
             "ip": ip,
             "port": port
         }
-
         try:
             response = requests.post(HTTP + KARNAK_MASTER_IP + ':' +
                                      KARNAK_MASTER_PORT + '/master/join',
                                      join_req)
-            globals.PEER_LIST = list(eval(response.text))
-            calculate_neighbors()
+            print(response.text)
             if response.status_code == 200:
                 print('**Joined Chord**')
             else:
@@ -141,18 +138,22 @@ def init():
             exit(0)
     print('\n')
 
-def server_run():
-    # run app in debug mode
-    port = sys.argv[2]
 
+def server_run():
     # get the ip from the command line
+    if len(sys.argv) < 3 or sys.argv[1] not in ('-p', '-P'):
+        print('Tell me the port, e.g. -p 5000')
+        os.kill(os.getpid(), signal.SIGINT)
+    port = sys.argv[2]
     ip = os.popen('ip addr show ' + NETIFACE +
                   ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
                   ).read().strip()
+    # run app in debug mode
     app.run(debug=True, host=ip, port=port, use_reloader=False)
 
+
 if __name__ == '__main__':
-    t1 = threading.Thread(target=init, args=())
+    t1 = threading.Thread(target=net_init, args=())
     t2 = threading.Thread(target=server_run, args=())
     t1.start()
     t2.start()

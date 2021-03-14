@@ -1,5 +1,6 @@
 from calls import *
 from config import *
+import config
 import globals
 import hashlib
 from flask import request
@@ -9,30 +10,29 @@ import time
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
-def userInsertHandle(req):
 
+def userInsertHandle(req):
     req["requester_ip"] = globals.KARNAK_IP
     req["requester_port"] = globals.KARNAK_PORT
-
+    req["replicounter"] = config.REP_K-1
     t = threading.Thread(target=insert_thread, args=(req, ))
     t.start()
     print("i threaded")
-    while globals.found_it == False:
+    while not globals.found_it:
         time.sleep(0.1)
     globals.found_it = False
     time.sleep(0.1)
     return "The song is added in the network."
     t.join()
 
-def userDeleteHandle(req):
 
+def userDeleteHandle(req):
     req["requester_ip"] = globals.KARNAK_IP
     req["requester_port"] = globals.KARNAK_PORT
-
     t = threading.Thread(target=delete_thread, args=(req, ))
     t.start()
     print("i threaded")
-    while globals.found_it == False:
+    while not globals.found_it:
         time.sleep(0.1)
     globals.found_it = False
     time.sleep(0.1)
@@ -45,7 +45,7 @@ def userQueryHandle(req):
     t = threading.Thread(target=query_thread, args=(req, ))
     t.start()
     print("i threaded")
-    while globals.found_it == False:
+    while not globals.found_it:
         time.sleep(0.1)
     globals.found_it = False
     time.sleep(0.1)
@@ -56,7 +56,7 @@ def userQueryHandle(req):
     t.join()
 
 def userDepartHandle():
-    # Only inform master about *who* you are, he will calculate the new list (issue with concurrent departs) <3
+    # Only inform master about *who* you are, he will calculate the new list (issue with concurrent departs)
     depart = globals.KARNAK_ID
     requests.post(HTTP + KARNAK_MASTER_IP + ':' + KARNAK_MASTER_PORT + '/master/depart', {'depart_id': depart})
     # has to re-arrange the songs before it goes
@@ -84,13 +84,18 @@ def masterJoinHandle(req):
     globals.PEER_LIST.append(req)
     globals.PEER_LIST.sort(key=lambda i: (i["nid"]))
     calculate_neighbors()
+    # new node must be updated first so that it's ready to receive songs
+    remoteNodeUpdatePeerList(req["ip"], req["port"], {"new_list": str(globals.PEER_LIST),
+                                                      "action": 'join',
+                                                      "actor_id": req["nid"]})
+    # sends rep_k to new node
+    remoteNodeReceive(req["ip"], req["port"], {"request": 'send_rep_info', "k": str(config.REP_K), "mode": config.CONSISTENCY_MODE})
     for peer in prev_list:
-        # Update anyone but master (as master)
-        if peer["nid"] != globals.KARNAK_ID:
+        if peer["nid"] != globals.KARNAK_ID:  # master doesn't update itself
             remoteNodeUpdatePeerList(peer["ip"], peer["port"], {"new_list": str(globals.PEER_LIST),
                                                                 "action": 'join',
                                                                 "actor_id": req["nid"]})
-    return str(globals.PEER_LIST)
+    return "you're in!"
 
 
 def masterDepartHandle(req):
@@ -108,6 +113,7 @@ def masterDepartHandle(req):
             remoteNodeUpdatePeerList(peer["ip"], peer["port"], {"new_list": str(globals.PEER_LIST),
                                                                 "action": 'depart',
                                                                 "actor_id": req["depart_id"]})
+
     return 'departed'
 
 def nodeUpdatePeerListHandle(req):
@@ -116,9 +122,9 @@ def nodeUpdatePeerListHandle(req):
     if req["action"] == 'join':
         if globals.PREV_PEER["nid"] == req["actor_id"]:
             new_owner = globals.PREV_PEER
-            remoteNodeUpdatePeerList(new_owner["ip"], new_owner["port"], {"new_list": str(globals.PEER_LIST),
-                                                                          "action": 'join',
-                                                                          "actor_id": req["actor_id"]})
+            # remoteNodeUpdatePeerList(new_owner["ip"], new_owner["port"], {"new_list": str(globals.PEER_LIST),
+            #                                                               "action": 'join',
+            #                                                               "actor_id": req["actor_id"]})
             expendable_copy = globals.SONG_DICT.copy()
             while expendable_copy:
                 key, song = expendable_copy.popitem()
@@ -136,7 +142,6 @@ def nodeUpdatePeerListHandle(req):
 def nodeQueryHandle(req):
     requester = req['requester']
     song_name = req['song_name']
-
     # I just want one specific song
     if song_name != "*":
         # if I am the node introducing the request
@@ -167,7 +172,6 @@ def nodeQueryHandle(req):
         # if the request made a full cycle
         if requester == globals.KARNAK_ID:
             return 'not found in network'
-
         # if I have the song
         if song_name in globals.SONG_DICT:
             print("I have the song")
@@ -192,7 +196,6 @@ def nodeQueryHandle(req):
                                     ':' + globals.NEXT_PEER['port'] +
                                     '/node/query', req)
             return response.text
-
     # I want to know all songs (every song per node)
     else:
          # if I am the node introducing the request
@@ -210,7 +213,6 @@ def nodeQueryHandle(req):
              return {
                  'msg': response.text
              }
-
          # if the request made a full cycle
          elif requester == globals.NEXT_PEER["nid"]:
              requester_ip = req['requester_ip']
@@ -226,7 +228,6 @@ def nodeQueryHandle(req):
                  return 'ok'
              else:
                  return 'error while transmitting request'
-
          else:
             req[globals.KARNAK_ID] = globals.SONG_DICT
             response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
@@ -234,72 +235,77 @@ def nodeQueryHandle(req):
                                     '/node/query', req)
             return response.text
 
+
 def nodeInsertHandle(req):
     sid = req['sid']
-
+    # TODO: remove metadata before inserting to dict!!!
     if sid <= globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
         # i am the node with the smallest id and the song is mine
         add_to_global_SONG_DICT(req)
-
     elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
         # i am the node with the smallest id and the song is mine 2
         add_to_global_SONG_DICT(req)
-
     elif globals.KARNAK_ID >= sid > globals.PREV_PEER['nid']:
         add_to_global_SONG_DICT(req)
-
     else:
         # passing request to next
-        response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)  # frequently used api call
+        response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
         return response.text
-
-    return 'The song is added in node with ip ' + globals.KARNAK_IP + 'and port ' + globals.KARNAK_PORT
+    if config.CONSISTENCY_MODE == 'l':
+        # passing request to next if within k-1
+        if int(req["replicounter"]) > 0:
+            req["replicounter"] = int(req["replicounter"]) - 1
+            response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
+            # TODO:  to be changed after fixing other stuff, currently inserts to itself k times
+            return response.text
+        # am k-th node
+        else:
+            return f'The song was added in {config.REP_K} RM nodes'
 
 
 def nodeDeleteHandle(req):
     sid = req["sid"]
     key = req["key"]
-
     if sid <= globals.KARNAK_ID and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
         # i am the node with the smallest id and I have the song
         delete_song(req)
-
     elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
         # i am the node with the smallest id and I have the song 2
         delete_song(req)
-
     elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
         # I have the song
         delete_song(req)
-
     else:
         # passing the request
         response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
                                  ':' + globals.NEXT_PEER['port'] +
                                  '/node/delete', req)
         return response.text
-
     return 'The song is not longer in the network'
 
+
 def nodeReceiveHandle(req):
-    request = req["request"]
-    if request == "query" :
-        if "song_name" in req:
+    req_type = req["request"]
+    if req_type == 'query':
+        if 'song_name' in req:
             # is query *
             globals.ALL_SONGS = req
         else:
-            song = {}
-            song["key"] = req["key"]
-            song["value"] = req["value"]
-            song["sender_ip"] = req["sender_ip"]
-            song["sender_port"] = req["sender_port"]
+            song = {"key": req["key"],
+                    "value": req["value"],
+                    "sender_ip": req["sender_ip"],
+                    "sender_port": req["sender_port"]}
             globals.DOWNLOADED_LIST[req['key']] = song
-
-    globals.found_it = True
+    #if req_type == 'insert': #  TODO: do stuff
+    elif req_type == 'send_rep_info':
+        config.REP_K = int(req["k"])
+        config.CONSISTENCY_MODE = req["mode"]
+    if req_type in ['insert', 'query', 'delete']:
+        globals.found_it = True
     return 'thamk you'
 
-### HELPER FUNCTIONS START ###
 
+### HELPER FUNCTIONS START ###
 
 def hash(key):
     return hashlib.sha1(key.encode('utf-8')).hexdigest()
@@ -336,14 +342,12 @@ def calculate_neighbors():
 
 def add_to_global_SONG_DICT(req):
     globals.SONG_DICT[req['key']] = req
-
     requester_ip = req["requester_ip"]
     requester_port = req["requester_port"]
     param = {"request": "insert"}
     response = requests.post(HTTP + requester_ip +
                             ':' + requester_port +
                             '/node/receive', param)
-
     if response.text == 'thamk you':
         print(f'Added {req["key"]} to my global song list:')
         pprint(globals.SONG_DICT)
