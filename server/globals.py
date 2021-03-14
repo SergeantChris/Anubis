@@ -18,4 +18,5 @@ global DOWNLOADED_LIST
 global ALL_SONGS
 
 # flag for threaded requests
-global found_it
+global request_ready
+global request_result

@@ -64,8 +64,7 @@ if __name__ == '__main__':
             query_list = action.split(", ")
             song_name = query_list[1]
             req = {
-                "song_name": song_name,
-                "requester": 'you'
+                "song_name": song_name
             }
             print(cli_query(port, req))
 

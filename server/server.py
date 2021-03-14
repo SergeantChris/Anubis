@@ -90,7 +90,8 @@ def net_init():
     globals.KARNAK_IP = ip
     globals.SONG_DICT = {}
     globals.DOWNLOADED_LIST = {}
-    globals.found_it = False
+    globals.request_ready = False
+    globals.request_result = 'error'
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
         globals.SELF_MASTER = True
         # TODO: dynamically retrieve values of -flags and their respective values (based on index within argv)
