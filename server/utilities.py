@@ -4,9 +4,29 @@ import globals
 import hashlib
 from flask import request
 from pprint import pprint
+import threading
+import time
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
+def userInsertHandle(req):
+    return 'todo'
+
+def userDeleteHandle(req):
+    return 'todo'
+
+def userQueryHandle(req):
+    song_name = req["song_name"]
+    t = threading.Thread(target=query_thread, args=(req, ))
+    t.start()
+    print("i threaded")
+    while globals.found_it == False:
+        time.sleep(0.1)
+    print(globals.found_it, globals.DOWNLOADED_LIST)
+    globals.found_it = False
+    time.sleep(0.1)
+    return globals.DOWNLOADED_LIST[song_name]
+    t.join()
 
 def userDepartHandle():
     # Only inform master about *who* you are, he will calculate the new list (issue with concurrent departs) <3
@@ -63,7 +83,6 @@ def masterDepartHandle(req):
                                                                 "actor_id": req["depart_id"]})
     return 'departed'
 
-
 def nodeUpdatePeerListHandle(req):
     globals.PEER_LIST = list(eval(req["new_list"]))
     calculate_neighbors()
@@ -91,9 +110,13 @@ def nodeQueryHandle(req):
     requester = req['requester']
     song_name = req['song_name']
 
+    # I just want one specific song
+    # if song_name != "*":
+
     # if I am the node introducing the request
     if requester == 'you':
         if song_name in globals.SONG_DICT:
+            print("I am lucky")
             song = globals.SONG_DICT[song_name]
             song['sender_id'] = globals.KARNAK_ID
             song['sender_ip'] = globals.KARNAK_IP
@@ -101,6 +124,7 @@ def nodeQueryHandle(req):
             globals.DOWNLOADED_LIST[song_name] = song
             response = type('response', (object, ), {'text': 'ok'})
         else:
+            print("I am not so lucky")
             new_req = {
                 "song_name": song_name,
                 "requester": globals.KARNAK_ID,
@@ -111,18 +135,17 @@ def nodeQueryHandle(req):
                                     ':' + globals.NEXT_PEER['port'] +
                                     '/node/query', new_req)
         # Return to the CLI
-        if response.text == 'ok':
-            return globals.DOWNLOADED_LIST[song_name]
-        else:
-            return {
-                'msg': response.text
-            }
+        return {
+            'msg': response.text
+        }
     # if the request made a full cycle
     if requester == globals.KARNAK_ID:
+        print("not found it")
         return 'not found in network'
 
     # if I have the song
     if song_name in globals.SONG_DICT:
+        print("I have the song")
         requester_ip = req['requester_ip']
         requester_port = req['requester_port']
         song = globals.SONG_DICT[song_name]
@@ -143,7 +166,46 @@ def nodeQueryHandle(req):
                                 ':' + globals.NEXT_PEER['port'] +
                                 '/node/query', req)
         return response.text
-
+    #
+    # # I want to know all songs (every song per node)
+    # else:
+    #      # if I am the node introducing the request
+    #      if requester == 'you':
+    #          songs_per_node = {"song_name": "*",
+    #                            globals.KARNAK_ID: globals.SONG_DICT,
+    #                            "requester": globals.KARNAK_ID,
+    #                            "requester_ip": globals.KARNAK_IP,
+    #                            "requester_port": globals.KARNAK_PORT
+    #          }
+    #          response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+    #                                   ':' + globals.NEXT_PEER['port'] +
+    #                                   '/node/query', songs_per_node)
+    #          # Return to the CLI
+    #          return {
+    #              'msg': response.text
+    #          }
+    #
+    #      # if the request made a full cycle
+    #      elif requester == globals.NEXT_PEER["nid"]:
+    #          requester_ip = req['requester_ip']
+    #          requester_port = req['requester_port']
+    #          req[globals.KARNAK_ID] = globals.SONG_DICT
+    #          response = requests.post(HTTP + requester_ip +
+    #                                  ':' + requester_port +
+    #                                  '/node/receive', req)
+    #          if response.text == 'thamk you':
+    #              return 'ok'
+    #          else:
+    #              return 'error while transmitting request'
+    #
+    #      else:
+    #         req[globals.KARNAK_ID] = globals.SONG_DICT
+    #         response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
+    #                                 ':' + globals.NEXT_PEER['port'] +
+    #                                 '/node/query', req)
+    #         return response.text
+    #
+    #     if requester == globals.KARNAK_ID:
 
 def nodeInsertHandle(req):
     sid = req['sid']
@@ -194,9 +256,8 @@ def nodeDeleteHandle(req):
 
 def nodeReceiveHandle(req):
     globals.DOWNLOADED_LIST[req['key']] = req
+    globals.found_it = True
     return 'thamk you'
-
-
 
 ### HELPER FUNCTIONS START ###
 
@@ -245,5 +306,8 @@ def delete_song(req):
     print(f'Deleted {req["key"]} from my global song list:')
     pprint(globals.SONG_DICT)
 
+def query_thread(req):
+    response = remoteNodeQuery(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+    return response.text
 
 ### HELPER FUNCTIONS END ###

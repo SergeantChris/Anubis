@@ -13,3 +13,6 @@ global PREV_PEER
 
 global SONG_DICT
 global DOWNLOADED_LIST
+
+# flag for threaded requests
+global found_it

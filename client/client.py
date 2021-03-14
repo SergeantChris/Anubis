@@ -13,16 +13,15 @@ def hash(key):
     return hashlib.sha1(key.encode('utf-8')).hexdigest()
 
 def cli_insert(port, ip, param):
-    id =  hash(ip + port)
     response = requests.post(localhost + ':' + port + '/node/insert', param)
     return response.text
 
-def cli_delete(port, ip, song_deats):
-    response = requests.post(localhost + ':' + port + '/node/delete', song_deats)
+def cli_delete(port, ip, param):
+    response = requests.post(localhost + ':' + port + '/node/delete', param)
     return response.text
 
 def cli_query(port, param):
-    response = requests.post(localhost + ':' + port + '/node/query', param)
+    response = requests.post(localhost + ':' + port + '/user/query', param)
     return response.text
 
 def cli_depart(port):
