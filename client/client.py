@@ -56,8 +56,7 @@ if __name__ == '__main__':
             insert_list = action.split(", ")
             print('insert list:')
             pprint(insert_list)
-            song_id = hash(insert_list[1])
-            song_deats = {"sid": song_id, "key": insert_list[1],
+            song_deats = {"key": insert_list[1],
                           "value": insert_list[2]}
             print(cli_insert(port, song_deats))
 
@@ -72,8 +71,7 @@ if __name__ == '__main__':
 
         elif action[:7] == 'delete,':
             delete_list = action.split(", ")
-            song_id = hash(delete_list[1])
-            song_deats = {"sid": song_id, "key": delete_list[1]}
+            song_deats = {"key": delete_list[1]}
             print(cli_delete(port, song_deats))
 
         elif action == 'exit':

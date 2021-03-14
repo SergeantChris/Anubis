@@ -12,12 +12,12 @@ import time
 
 
 def userInsertHandle(req):
+    req["sid"] = hash(req["key"])
     req["requester_ip"] = globals.KARNAK_IP
     req["requester_port"] = globals.KARNAK_PORT
     req["replicounter"] = config.REP_K-1
     t = threading.Thread(target=insert_thread, args=(req, ))
     t.start()
-    print("i threaded")
     while not globals.found_it:
         time.sleep(0.1)
     globals.found_it = False
@@ -27,11 +27,11 @@ def userInsertHandle(req):
 
 
 def userDeleteHandle(req):
+    req["sid"] = hash(req["key"])
     req["requester_ip"] = globals.KARNAK_IP
     req["requester_port"] = globals.KARNAK_PORT
     t = threading.Thread(target=delete_thread, args=(req, ))
     t.start()
-    print("i threaded")
     while not globals.found_it:
         time.sleep(0.1)
     globals.found_it = False
@@ -239,47 +239,34 @@ def nodeQueryHandle(req):
 def nodeInsertHandle(req):
     sid = req['sid']
     # TODO: remove metadata before inserting to dict!!!
-    if sid <= globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
-        # i am the node with the smallest id and the song is mine
+    if check_primary_responsibility(sid):
         add_to_global_SONG_DICT(req)
-    elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
-        # i am the node with the smallest id and the song is mine 2
-        add_to_global_SONG_DICT(req)
-    elif globals.KARNAK_ID >= sid > globals.PREV_PEER['nid']:
-        add_to_global_SONG_DICT(req)
+        # TODO: notifier must be last node in K field
+        insert_notify_requester(req)
+        if config.CONSISTENCY_MODE == 'l':
+            # passing request to next if within k-1
+            if int(req["replicounter"]) > 0:
+                req["replicounter"] = int(req["replicounter"]) - 1
+                # TODO:  to be changed after fixing other stuff, currently inserts to itself k times
+                response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
+                return response.text
+            # am k-th node
+            else:
+                return f'The song was added in {config.REP_K} RM nodes'
     else:
         # passing request to next
         response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
         return response.text
-    if config.CONSISTENCY_MODE == 'l':
-        # passing request to next if within k-1
-        if int(req["replicounter"]) > 0:
-            req["replicounter"] = int(req["replicounter"]) - 1
-            response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
-            # TODO:  to be changed after fixing other stuff, currently inserts to itself k times
-            return response.text
-        # am k-th node
-        else:
-            return f'The song was added in {config.REP_K} RM nodes'
 
 
 def nodeDeleteHandle(req):
-    sid = req["sid"]
-    key = req["key"]
-    if sid <= globals.KARNAK_ID and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
-        # i am the node with the smallest id and I have the song
-        delete_song(req)
-    elif sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid']:
-        # i am the node with the smallest id and I have the song 2
-        delete_song(req)
-    elif sid <= globals.KARNAK_ID and sid > globals.PREV_PEER['nid']:
-        # I have the song
+    # TODO: what happens with replicas?
+    if check_primary_responsibility(req):
         delete_song(req)
     else:
-        # passing the request
-        response = requests.post(HTTP + globals.NEXT_PEER['ip'] +
-                                 ':' + globals.NEXT_PEER['port'] +
-                                 '/node/delete', req)
+        response = remoteNodeDelete(globals.NEXT_PEER['ip'],
+                                    globals.NEXT_PEER['port'],
+                                    req)
         return response.text
     return 'The song is not longer in the network'
 
@@ -341,19 +328,43 @@ def calculate_neighbors():
 
 
 def add_to_global_SONG_DICT(req):
-    globals.SONG_DICT[req['key']] = req
+    '''
+    Inserts (or updates) the corresponding song inside the global song dictionary
+    :param req: The song
+    :return: None
+    '''
+    globals.SONG_DICT[req['key']] = {
+        'sid': req['sid'],
+        'key': req['key'],
+        'value': req['value']
+    }
+
+def insert_notify_requester(req, status):
     requester_ip = req["requester_ip"]
     requester_port = req["requester_port"]
-    param = {"request": "insert"}
+    param = {
+        'request': 'insert',
+        'status': status
+    }
     response = requests.post(HTTP + requester_ip +
-                            ':' + requester_port +
-                            '/node/receive', param)
+                             ':' + requester_port +
+                             '/node/receive', param)
     if response.text == 'thamk you':
         print(f'Added {req["key"]} to my global song list:')
         pprint(globals.SONG_DICT)
         return 'ok'
     else:
         return 'error while transmitting song'
+
+def check_primary_responsibility(sid):
+    '''
+
+    :param sid: The song ID to check primary responsiblity for
+    :return: The check status
+    '''
+    return ((sid <= globals.KARNAK_ID == globals.PEER_LIST[0]['nid'])
+            or (sid > globals.PEER_LIST[-1]['nid'] and globals.KARNAK_ID == globals.PEER_LIST[0]['nid'])
+            or (globals.KARNAK_ID >= sid > globals.PREV_PEER['nid']))
 
 
 def delete_song(req):
@@ -368,13 +379,16 @@ def delete_song(req):
                             ':' + requester_port +
                             '/node/receive', param)
 
+
 def query_thread(req):
     response = remoteNodeQuery(globals.KARNAK_IP, globals.KARNAK_PORT, req)
     return response.text
 
+
 def insert_thread(req):
     response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
     return response.text
+
 
 def delete_thread(req):
     response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)

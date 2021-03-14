@@ -93,6 +93,7 @@ def net_init():
     globals.found_it = False
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
         globals.SELF_MASTER = True
+        # TODO: dynamically retrieve values of -flags and their respective values (based on index within argv)
         if len(sys.argv) < 6 or sys.argv[3] != '-k' or sys.argv[5] not in ('-l', '-e'):
             print('Please specify replication factor, e.g. -k 2')
             print('Please specify replica consistency mode, -l for linearizability, -e for eventual')
@@ -143,6 +144,7 @@ def server_run():
     # get the ip from the command line
     if len(sys.argv) < 3 or sys.argv[1] not in ('-p', '-P'):
         print('Tell me the port, e.g. -p 5000')
+        # TODO: make pretty :D
         os.kill(os.getpid(), signal.SIGINT)
     port = sys.argv[2]
     ip = os.popen('ip addr show ' + NETIFACE +
