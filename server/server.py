@@ -1,5 +1,5 @@
 from flask import Flask, request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from utilities import *
 from config import *
 import config
@@ -11,28 +11,36 @@ import time
 import signal
 
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app, resources={r"/user/*": {"origins": "*"}})
 # The API endpoints immediately redirect to their handlers, passing them the
 # dict request object
+
+
+@cross_origin()
 @app.route('/user/insert', methods=['POST'])
 def user_insert_callback():
-    req = request.form.to_dict()
+    req = config.REQUEST_PARSER()
     return userInsertHandle(req)
 
+
+@cross_origin()
 @app.route('/user/delete', methods=['POST'])
 def user_delete_callback():
-    req = request.form.to_dict()
+    req = config.REQUEST_PARSER()
     return userDeleteHandle(req)
 
+@cross_origin()
 @app.route('/user/query', methods=['POST'])
 def user_query_callback():
-    req = request.form.to_dict()
+    req = config.REQUEST_PARSER()
     return userQueryHandle(req)
 
+@cross_origin()
 @app.route('/user/depart', methods=['POST'])
 def user_depart_callback():
     return userDepartHandle()
 
+@cross_origin()
 @app.route('/user/overlay', methods=['POST'])
 def user_overlay_callback():
     return userOverlayHandle()

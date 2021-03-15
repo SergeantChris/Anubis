@@ -1,14 +1,23 @@
 # Network variables
+from flask import request
+
+LOCAL_MODE = True
 
 KARNAK_MASTER_PORT = '5000'
 
-# for local Testing
-KARNAK_MASTER_IP = '127.0.0.1'
-NETIFACE = 'lo'
+def REQUEST_PARSER():
+    if LOCAL_MODE:
+        return request.form.to_dict()
+    else:
+        return request.get_json()
 
-# for VMs
-#NETIFACE = 'ens3'
-#KARNAK_MASTER_IP = '217.69.0.179'
+if LOCAL_MODE:
+    KARNAK_MASTER_IP = '127.0.0.1'
+    NETIFACE = 'lo'
+
+else:
+    NETIFACE = 'ens3'
+    KARNAK_MASTER_IP = '217.69.0.179'
 
 HTTP = 'http://'
 
