@@ -1,4 +1,5 @@
 from flask import Flask, request
+from flask_cors import CORS
 from utilities import *
 from config import *
 import config
@@ -10,7 +11,7 @@ import time
 import signal
 
 app = Flask(__name__)
-
+CORS(app)
 # The API endpoints immediately redirect to their handlers, passing them the
 # dict request object
 @app.route('/user/insert', methods=['POST'])
