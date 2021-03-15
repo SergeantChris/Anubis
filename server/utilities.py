@@ -13,14 +13,12 @@ def userInsertHandle(req):
     req["requester_id"] = globals.KARNAK_ID
     req["requester_ip"] = globals.KARNAK_IP
     req["requester_port"] = globals.KARNAK_PORT
-    req["replicounter"] = config.REP_K-1
     t = threading.Thread(target=insert_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
         time.sleep(0.1)
     globals.request_ready = False
     time.sleep(0.1)
-
     return "The song is added in the network."\
         if globals.request_result == 'ok'\
         else 'Could not insert'
@@ -66,14 +64,19 @@ def userQueryHandle(req):
 
 def userDepartHandle():
     # Only inform master about *who* you are, he will calculate the new list (issue with concurrent departs)
-    depart = globals.KARNAK_ID
-    requests.post(HTTP + KARNAK_MASTER_IP + ':' + KARNAK_MASTER_PORT + '/master/depart', {'depart_id': depart})
+    requests.post(HTTP + KARNAK_MASTER_IP + ':' + KARNAK_MASTER_PORT + '/master/depart', {'nid': globals.KARNAK_ID,
+                                                                                          'ip': globals.KARNAK_IP,
+                                                                                          'port': globals.KARNAK_PORT})
     # has to re-arrange the songs before it goes
     new_owner = globals.NEXT_PEER
     while globals.SONG_DICT:
         song = globals.SONG_DICT.popitem()[1]
-        song['requester_ip'] = globals.KARNAK_IP
-        song['requester_port'] = globals.KARNAK_PORT
+        song["requester_id"] = globals.NEXT_PEER['nid']
+        song['requester_ip'] = globals.NEXT_PEER['ip']
+        song['requester_port'] = globals.NEXT_PEER['port']
+        remoteNodeDelete(globals.NEXT_PEER['ip'],
+                         globals.NEXT_PEER['port'],
+                         song)
         remoteNodeInsert(new_owner["ip"], new_owner["port"], song)
     print('Rearranged songs before depart, I now own')
     pprint(globals.SONG_DICT)
@@ -90,7 +93,6 @@ def userOverlayHandle():
 
 
 def masterJoinHandle(req):
-    prev_list = globals.PEER_LIST.copy()
     globals.PEER_LIST.append(req)
     globals.PEER_LIST.sort(key=lambda i: (i["nid"]))
     calculate_neighbors()
@@ -100,7 +102,10 @@ def masterJoinHandle(req):
                                                       "actor_id": req["nid"]})
     # sends rep_k to new node
     remoteNodeReceive(req["ip"], req["port"], {"request": 'send_rep_info', "k": str(config.REP_K), "mode": config.CONSISTENCY_MODE})
-    for peer in prev_list:
+    copy = globals.PEER_LIST.copy()
+    le_list = copy[:copy.index(req)][::-1] + copy[copy.index(req):][::-1]
+    le_list.pop()
+    for peer in le_list:
         if peer["nid"] != globals.KARNAK_ID:  # master doesn't update itself
             remoteNodeUpdatePeerList(peer["ip"], peer["port"], {"new_list": str(globals.PEER_LIST),
                                                                 "action": 'join',
@@ -109,21 +114,18 @@ def masterJoinHandle(req):
 
 
 def masterDepartHandle(req):
-    depart = req["depart_id"]
-    new_list = [node for node in globals.PEER_LIST if node["nid"] != depart]  # inefficient, but good enough :D
+    copy = globals.PEER_LIST.copy()
+    le_list = copy[:copy.index(req)][::-1] + copy[copy.index(req):][::-1]
+    le_list.pop()
     # Update master's global peer list
-    globals.PEER_LIST = new_list
+    globals.PEER_LIST = [node for node in globals.PEER_LIST if node["nid"] != req["nid"]]
     globals.PEER_LIST.sort(key=lambda i: (i["nid"]))
     calculate_neighbors()
-    # Master must not call his own /node/updatePeerList -- Flask will be locked as it is able to process only 1 request
-    for peer in globals.PEER_LIST:
-        # check if I am not hitting myself (as master)
-        if peer["nid"] != globals.KARNAK_ID:
-            # give everyone the new list
+    for peer in le_list:
+        if peer["nid"] != globals.KARNAK_ID:  # master doesn't update itself
             remoteNodeUpdatePeerList(peer["ip"], peer["port"], {"new_list": str(globals.PEER_LIST),
                                                                 "action": 'depart',
-                                                                "actor_id": req["depart_id"]})
-
+                                                                "actor_id": req["nid"]})
     return 'departed'
 
 
@@ -136,9 +138,11 @@ def nodeUpdatePeerListHandle(req):
             expendable_copy = globals.SONG_DICT.copy()
             while expendable_copy:
                 key, song = expendable_copy.popitem()
+                song["requester_id"] = globals.KARNAK_ID
                 song['requester_ip'] = globals.KARNAK_IP
                 song['requester_port'] = globals.KARNAK_PORT
                 globals.SONG_DICT.pop(key)
+                remoteNodeDelete(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], song)
                 # songs are also appended concurrently to SONG_DICT by following insert, so song won't
                 # necessarily still be the last one for popitem
                 remoteNodeInsert(new_owner["ip"], new_owner["port"], song)
@@ -195,24 +199,24 @@ def nodeQueryHandle(req):
 
 
 def nodeInsertHandle(req):
-    sid = req['sid']
-    # TODO: remove metadata before inserting to dict!!!
-    if check_primary_responsibility(sid):
+    if check_primary_responsibility(req['sid']):
         add_to_global_SONG_DICT(req)
-        # TODO: notifier must be last node in K field
+        if config.CONSISTENCY_MODE == 'l':
+            req["replicounter"] = config.REP_K-1
+            response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
+            return response.text
         notify_requester(req, 'insert', 'ok')
-        # if config.CONSISTENCY_MODE == 'l':
-        #     # passing request to next if within k-1
-        #     if int(req["replicounter"]) > 0:
-        #         req["replicounter"] = int(req["replicounter"]) - 1
-        #         # TODO:  to be changed after fixing other stuff, currently inserts to itself k times
-        #         response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
-        #         return response.text
-        #
-        return f'The song was added in {config.REP_K} RM nodes'
-    # This is never meant to be executed / Insert never fails
-    elif req["requester_id"] == globals.NEXT_PEER['nid']:
-        notify_requester(req, 'insert', 'error')
+    if 'replicounter' in req:
+        add_to_global_SONG_DICT(req)
+        # passing request to next if within k-1
+        req["replicounter"] = int(req["replicounter"]) - 1
+        if int(req["replicounter"]) > 0:
+            response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
+            return response.text
+        # am k-th node
+        else:
+            notify_requester(req, 'insert', 'ok')
+            return f'The song was added in {config.REP_K} RM nodes'
     else:
         # passing request to next
         response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
@@ -220,14 +224,11 @@ def nodeInsertHandle(req):
 
 
 def nodeDeleteHandle(req):
-    sid = req['sid']
-    # TODO: what happens with replicas?
-    if check_primary_responsibility(sid):
-        delete_song(req)
-        notify_requester(req, 'delete', 'ok')
-    # If request made full circle
-    elif req['requester_id'] == globals.NEXT_PEER['nid']:
+    delete_song(req)
+    # If my next is requester
+    if req['requester_id'] == globals.NEXT_PEER['nid']:
         notify_requester(req, 'delete', 'error')
+    # If my next is not requester
     else:
         response = remoteNodeDelete(globals.NEXT_PEER['ip'],
                                     globals.NEXT_PEER['port'],
