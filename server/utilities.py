@@ -8,11 +8,14 @@ import time
 # The following functions are the handlers for API calls.
 # They use functions defined in calls.py accordingly, with respect to Chord protocol
 
+
+def insert_thread(req):
+    response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+    return response.text
+
 def userInsertHandle(req):
     req["sid"] = hash(req["key"])
-    req["requester_id"] = globals.KARNAK_ID
-    req["requester_ip"] = globals.KARNAK_IP
-    req["requester_port"] = globals.KARNAK_PORT
+    append_request_personal_info(req)
     t = threading.Thread(target=insert_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
@@ -25,11 +28,13 @@ def userInsertHandle(req):
     t.join()
 
 
+def delete_thread(req):
+    response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+    return response.text
+
 def userDeleteHandle(req):
     req["sid"] = hash(req["key"])
-    req["requester_id"] = globals.KARNAK_ID
-    req["requester_ip"] = globals.KARNAK_IP
-    req["requester_port"] = globals.KARNAK_PORT
+    append_request_personal_info(req)
     t = threading.Thread(target=delete_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
@@ -42,11 +47,13 @@ def userDeleteHandle(req):
     t.join()
 
 
+def query_thread(req):
+    response = remoteNodeQuery(globals.KARNAK_IP, globals.KARNAK_PORT, req)
+    return response.text
+
 def userQueryHandle(req):
     song_name = req["song_name"]
-    req["requester_id"] = globals.KARNAK_ID
-    req["requester_ip"] = globals.KARNAK_IP
-    req["requester_port"] = globals.KARNAK_PORT
+    append_request_personal_info(req)
     t = threading.Thread(target=query_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
@@ -61,6 +68,7 @@ def userQueryHandle(req):
     else:
         return {'msg': 'Song not found in network'}
     t.join()
+
 
 def userDepartHandle():
     # Only inform master about *who* you are, he will calculate the new list (issue with concurrent departs)
@@ -138,10 +146,8 @@ def nodeUpdatePeerListHandle(req):
             expendable_copy = globals.SONG_DICT.copy()
             while expendable_copy:
                 key, song = expendable_copy.popitem()
-                song["requester_id"] = globals.KARNAK_ID
-                song['requester_ip'] = globals.KARNAK_IP
-                song['requester_port'] = globals.KARNAK_PORT
                 globals.SONG_DICT.pop(key)
+                append_request_personal_info(song)
                 remoteNodeDelete(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], song)
                 # songs are also appended concurrently to SONG_DICT by following insert, so song won't
                 # necessarily still be the last one for popitem
@@ -160,16 +166,33 @@ def nodeQueryHandle(req):
     if song_name != "*":
         # if I have the song
         if song_name in globals.SONG_DICT:
-            song = globals.SONG_DICT[song_name]
-            # create response object containing both song and my id\
-            data = {
-                "sender_id": globals.KARNAK_ID,
-                "sender_ip": globals.KARNAK_IP,
-                "sender_port": globals.KARNAK_PORT,
-                "song": song
-            }
-            notify_requester(req, 'query', 'ok', data)
-            return 'ok'
+            if config.CONSISTENCY_MODE == 'l':
+                if check_primary_responsibility(globals.SONG_DICT[song_name]['sid']):
+                    req['replicounter'] = config.REP_K-1
+                    response = remoteNodeQuery(globals.NEXT_PEER['ip'],
+                                               globals.NEXT_PEER['port'],
+                                               req)
+                    return response.text
+                elif 'replicounter' in req:
+                    # passing request to next if within k-1
+                    req["replicounter"] = int(req["replicounter"]) - 1
+                    if int(req["replicounter"]) > 0:
+                        response = remoteNodeQuery(globals.NEXT_PEER['ip'],
+                                                   globals.NEXT_PEER['port'],
+                                                   req)
+                        return response.text
+                    # am k-th node
+                    else:
+                        make_song_response(song_name, req)
+                        return 'ok'
+                else:
+                    remoteNodeQuery(globals.NEXT_PEER['ip'],
+                                    globals.NEXT_PEER['port'],
+                                    req)
+                    return "it's not time yet"
+            elif config.CONSISTENCY_MODE == 'e':
+                make_song_response(song_name, req)
+                return 'ok'
         # if the request made a full cycle
         elif requester == globals.NEXT_PEER['nid']:
             notify_requester(req, 'query', 'error')
@@ -198,15 +221,29 @@ def nodeQueryHandle(req):
             return 'ok'
 
 
+def go_send_yourself(req):
+    time.sleep(5)  # simulating wait for enough network bandwidth
+    # Time to send update to replica nodes!
+    if int(req["replicounter"]) > 0:
+        response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
+        return response.text
+    return 'ok'
+
 def nodeInsertHandle(req):
     if check_primary_responsibility(req['sid']):
         add_to_global_SONG_DICT(req)
+        req["replicounter"] = config.REP_K - 1
         if config.CONSISTENCY_MODE == 'l':
-            req["replicounter"] = config.REP_K-1
-            response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
-            return response.text
-        notify_requester(req, 'insert', 'ok')
-    if 'replicounter' in req:
+            if int(req["replicounter"]) > 0:
+                response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
+                return response.text
+            return 'ok'
+        elif config.CONSISTENCY_MODE == 'e':
+            t = threading.Thread(target=go_send_yourself, args=(req,))
+            t.start()
+            notify_requester(req, 'insert', 'ok')
+            return 'ok'
+    elif 'replicounter' in req:
         add_to_global_SONG_DICT(req)
         # passing request to next if within k-1
         req["replicounter"] = int(req["replicounter"]) - 1
@@ -216,7 +253,7 @@ def nodeInsertHandle(req):
         # am k-th node
         else:
             notify_requester(req, 'insert', 'ok')
-            return f'The song was added in {config.REP_K} RM nodes'
+            return 'The song was added in all RM nodes'
     else:
         # passing request to next
         response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
@@ -227,7 +264,7 @@ def nodeDeleteHandle(req):
     delete_song(req)
     # If my next is requester
     if req['requester_id'] == globals.NEXT_PEER['nid']:
-        notify_requester(req, 'delete', 'error')
+        notify_requester(req, 'delete', 'ok')
     # If my next is not requester
     else:
         response = remoteNodeDelete(globals.NEXT_PEER['ip'],

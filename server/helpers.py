@@ -91,22 +91,19 @@ def delete_song(req):
         pprint(globals.SONG_DICT)
 
 
-def query_thread(req):
-    response = remoteNodeQuery(globals.KARNAK_IP, globals.KARNAK_PORT, req)
-    return response.text
-
-
-def insert_thread(req):
-    response = remoteNodeInsert(globals.KARNAK_IP, globals.KARNAK_PORT, req)
-    return response.text
-
-
-def delete_thread(req):
-    response = remoteNodeDelete(globals.KARNAK_IP, globals.KARNAK_PORT, req)
-    return response.text
-
-
 def append_request_personal_info(req):
-    req["requester"] = globals.KARNAK_ID
+    req["requester_id"] = globals.KARNAK_ID
     req["requester_ip"] = globals.KARNAK_IP
     req["requester_port"] = globals.KARNAK_PORT
+
+
+def make_song_response(song_name, req):
+    song = globals.SONG_DICT[song_name]
+    # create response object containing both song and my id
+    data = {
+        "sender_id": globals.KARNAK_ID,
+        "sender_ip": globals.KARNAK_IP,
+        "sender_port": globals.KARNAK_PORT,
+        "song": song
+    }
+    notify_requester(req, 'query', 'ok', data)
