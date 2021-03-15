@@ -19,9 +19,9 @@ def userInsertHandle(req):
         time.sleep(0.1)
     globals.request_ready = False
     time.sleep(0.1)
-    return "The song is added in the network."\
+    return {'msg': 'The song is added in the network.'}\
         if globals.request_result == 'ok'\
-        else 'Could not insert'
+        else {'msg': 'Could not insert'}
     t.join()
 
 
@@ -36,9 +36,9 @@ def userDeleteHandle(req):
         time.sleep(0.1)
     globals.request_ready = False
     time.sleep(0.1)
-    return "The song was deleted." \
+    return {'msg': 'The song was deleted.'} \
         if globals.request_result == 'ok' \
-        else 'Song not found, thus not deleted.'
+        else {'msg': 'Song not found, thus not deleted.'}
     t.join()
 
 
@@ -59,7 +59,7 @@ def userQueryHandle(req):
         else:
             return globals.DOWNLOADED_LIST[song_name]
     else:
-        return 'Song not found in network'
+        return {'msg': 'Song not found in network'}
     t.join()
 
 def userDepartHandle():
@@ -81,7 +81,7 @@ def userDepartHandle():
     print('Rearranged songs before depart, I now own')
     pprint(globals.SONG_DICT)
     shutdown_server()
-    return 'Departing & Shutting down...'
+    return {'msg': 'Departing & Shutting down...'}
 
 
 def userOverlayHandle():
