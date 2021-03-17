@@ -76,5 +76,12 @@ if __name__ == '__main__':
         elif action == 'exit':
             exit(0)
 
+        elif action == 'help':
+            print("\nWrite overlay in order to print the overlay of the chord network")
+            print("Write depart to depart this node from the network")
+            print("Write insert, <name of the song>, <value> to add a song in the network")
+            print("Write query, <name of the song> to find and get a song from the network")
+            print("Write delete, <name of the song>, to delete a song from the network\n")
+
         else:
             print('Invalid input. Try help!')
