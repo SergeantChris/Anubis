@@ -95,12 +95,14 @@ def net_init():
     ip = os.popen('ip addr show ' + NETIFACE +
                   ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
                   ).read().strip()
+
     globals.KARNAK_PORT = port
     globals.KARNAK_IP = ip
     globals.SONG_DICT = {}
     globals.DOWNLOADED_LIST = {}
     globals.request_ready = False
     globals.request_result = 'error'
+
     if ip == KARNAK_MASTER_IP and port == KARNAK_MASTER_PORT:
         globals.SELF_MASTER = True
         # TODO: dynamically retrieve values of -flags and their respective values (based on index within argv)

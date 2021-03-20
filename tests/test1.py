@@ -32,6 +32,7 @@ if __name__ == '__main__':
     f = open("insert.txt", "r")
     inserts = f.read()
     inserts = inserts.splitlines()
+    print("Insert requests testing...")
     now = time.time()
     for insert in inserts:
         insert_list = insert.split(", ")
@@ -39,42 +40,45 @@ if __name__ == '__main__':
                       "value": insert_list[1]}
         # randomly choose ip and port for insert
         port = random.choice(ports)
-        print(cli_insert(port, song_deats))
-        print(".", end ="")
+        _ = cli_insert(port, song_deats)
+
     later = time.time()
     difference = later - now
-    print("")
+    print("The throughput is ", difference)
+    f.close()
 
     # test 2
     f = open("query.txt", "r")
     queries = f.read()
     queries = queries.splitlines()
+    print("Query requests testing...")
     now = time.time()
     for query in queries:
         song_deats = {"song_name": query}
         # randomly choose ip and port for insert
         port = random.choice(ports)
-        cli_query(port, song_deats)
-        print("-", end ="")
+        _ = cli_query(port, song_deats)
     later = time.time()
     difference = later - now
-    print("")
+    print("The throughput is ", difference)
+    f.close()
+    exit(0)
 
-    # test 3
-    if len(sys.argv) == 2 and sys.argv[1] in ('-l'):
-        f = open("requests.txt", "r")
-        requests = f.read()
-        requests = requests.splitlines()
-        for request in requests:
-            request_list = request.split(", ")
-            if request_list[0] == "insert":
-                song_deats = {"key": request_list[1],
-                              "value": request_list[2]}
-                # randomly choose ip and port for insert
-                port = random.choice(ports)
-                print(cli_insert(port, song_deats))
-            else:
-                song_deats = {"song_name": request_list[1]}
-                # randomly choose ip and port for insert
-                port = random.choice(ports)
-                print(cli_query(port, song_deats))
+    # # test 3
+    # if len(sys.argv) == 2 and sys.argv[1] in ('-l'):
+    #     f = open("requests.txt", "r")
+    #     requests = f.read()
+    #     requests = requests.splitlines()
+    #     for request in requests:
+    #         request_list = request.split(", ")
+    #         if request_list[0] == "insert":
+    #             song_deats = {"key": request_list[1],
+    #                           "value": request_list[2]}
+    #             # randomly choose ip and port for insert
+    #             port = random.choice(ports)
+    #             print(cli_insert(port, song_deats))
+    #         else:
+    #             song_deats = {"song_name": request_list[1]}
+    #             # randomly choose ip and port for insert
+    #             port = random.choice(ports)
+    #             print(cli_query(port, song_deats))

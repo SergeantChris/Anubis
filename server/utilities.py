@@ -19,9 +19,8 @@ def userInsertHandle(req):
     t = threading.Thread(target=insert_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
-        time.sleep(0.1)
+        time.sleep(0.001)
     globals.request_ready = False
-    time.sleep(0.1)
     return {'msg': 'The song is added in the network.'}\
         if globals.request_result == 'ok'\
         else {'msg': 'Could not insert'}
@@ -38,9 +37,8 @@ def userDeleteHandle(req):
     t = threading.Thread(target=delete_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
-        time.sleep(0.1)
+        time.sleep(0.001)
     globals.request_ready = False
-    time.sleep(0.1)
     return {'msg': 'The song was deleted.'} \
         if globals.request_result == 'ok' \
         else {'msg': 'Song not found, thus not deleted.'}
@@ -57,9 +55,8 @@ def userQueryHandle(req):
     t = threading.Thread(target=query_thread, args=(req, ))
     t.start()
     while not globals.request_ready:
-        time.sleep(0.1)
+        time.sleep(0.001)
     globals.request_ready = False
-    time.sleep(0.1)
     if globals.request_result == 'ok':
         if song_name == "*":
             return eval(globals.ALL_SONGS)
@@ -166,6 +163,11 @@ def nodeQueryHandle(req):
     if song_name != "*":
         # if I have the song
         if song_name in globals.SONG_DICT:
+
+            if config.REP_K == 1:
+                make_song_response(song_name, req)
+                return 'ok'
+                
             if config.CONSISTENCY_MODE == 'l':
                 if check_primary_responsibility(globals.SONG_DICT[song_name]['sid']):
                     req['replicounter'] = config.REP_K-1
@@ -222,7 +224,8 @@ def nodeQueryHandle(req):
 
 
 def go_send_yourself(req):
-    time.sleep(5)  # simulating wait for enough network bandwidth
+    time.sleep(5)
+    # simulating wait for enough network bandwidth
     # Time to send update to replica nodes!
     if int(req["replicounter"]) > 0:
         response = remoteNodeInsert(globals.NEXT_PEER['ip'], globals.NEXT_PEER['port'], req)
@@ -232,6 +235,13 @@ def go_send_yourself(req):
 def nodeInsertHandle(req):
     if check_primary_responsibility(req['sid']):
         add_to_global_SONG_DICT(req)
+
+        if config.REP_K == 1:
+            # no replication
+            print("no replication")
+            notify_requester(req, 'insert', 'ok')
+            return 'The song was added in all RM nodes'
+
         req["replicounter"] = config.REP_K - 1
         if config.CONSISTENCY_MODE == 'l':
             if int(req["replicounter"]) > 0:
@@ -243,6 +253,7 @@ def nodeInsertHandle(req):
             t.start()
             notify_requester(req, 'insert', 'ok')
             return 'ok'
+
     elif 'replicounter' in req:
         add_to_global_SONG_DICT(req)
         # passing request to next if within k-1
