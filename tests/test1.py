@@ -17,56 +17,57 @@ else:
 HTTP = 'http://'
 
 def cli_insert(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/insert', param)
+    response = requests.post(HTTP + ip + ':' + port + '/user/insert', json = param)
     return response.text
 
 def cli_delete(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/delete', param)
+    response = requests.post(HTTP + ip + ':' + port + '/user/delete', json = param)
     return response.text
 
 def cli_query(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/query', param)
+    response = requests.post(HTTP + ip + ':' + port + '/user/query', json = param)
     return response.text
 
 if __name__ == '__main__':
 
-    # test 1
-    f = open("insert.txt", "r")
-    inserts = f.read()
-    inserts = inserts.splitlines()
-    print("Insert requests testing...")
-    now = time.time()
-    for insert in inserts:
-        insert_list = insert.split(", ")
-        song_deats = {"key": insert_list[0],
-                      "value": insert_list[1]}
-        # randomly choose ip and port for insert
-        port = random.choice(ports)
-        ip = random.choice(ips)
-        _ = cli_insert(port, song_deats, ip)
+    if len(sys.argv) == 1:
+        # test 1
+        f = open("insert.txt", "r")
+        inserts = f.read()
+        inserts = inserts.splitlines()
+        print("Insert requests testing...")
+        now = time.time()
+        for insert in inserts:
+            insert_list = insert.split(", ")
+            song_deats = {"key": insert_list[0],
+                          "value": insert_list[1]}
+            # randomly choose ip and port for insert
+            port = random.choice(ports)
+            ip = random.choice(ips)
+            _ = cli_insert(port, song_deats, ip)
 
-    later = time.time()
-    difference = later - now
-    print("The throughput is ", difference)
-    f.close()
+        later = time.time()
+        difference = later - now
+        print("The throughput is ", difference)
+        f.close()
 
-    # test 2
-    f = open("query.txt", "r")
-    queries = f.read()
-    queries = queries.splitlines()
-    print("Query requests testing...")
-    now = time.time()
-    for query in queries:
-        song_deats = {"song_name": query}
-        # randomly choose ip and port for insert
-        port = random.choice(ports)
-        ip = random.choice(ips)
-        _ = cli_query(port, song_deats, ip)
-    later = time.time()
-    difference = later - now
-    print("The throughput is ", difference)
-    f.close()
-    # exit(0)
+        # test 2
+        f = open("query.txt", "r")
+        queries = f.read()
+        queries = queries.splitlines()
+        print("Query requests testing...")
+        now = time.time()
+        for query in queries:
+            song_deats = {"song_name": query}
+            # randomly choose ip and port for insert
+            port = random.choice(ports)
+            ip = random.choice(ips)
+            _ = cli_query(port, song_deats, ip)
+        later = time.time()
+        difference = later - now
+        print("The throughput is ", difference)
+        f.close()
+        # exit(0)
 
     # test 3
     if len(sys.argv) == 2 and sys.argv[1] in ('-l'):

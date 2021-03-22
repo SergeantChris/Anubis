@@ -14,15 +14,24 @@ else:
 HTTP = 'http://'
 
 def cli_insert(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/insert', json = param)
+    if LOCAL_MODE:
+        response = requests.post(HTTP + ip + ':' + port + '/user/insert', param)
+    else:
+        response = requests.post(HTTP + ip + ':' + port + '/user/insert', json = param)
     return response.text
 
 def cli_delete(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/delete', param)
+    if LOCAL_MODE:
+        response = requests.post(HTTP + ip + ':' + port + '/user/delete', param)
+    else:
+        response = requests.post(HTTP + ip + ':' + port + '/user/delete', json = param)
     return response.text
 
 def cli_query(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/query', param)
+    if LOCAL_MODE:
+        response = requests.post(HTTP + ip + ':' + port + '/user/query', param)
+    else:
+        response = requests.post(HTTP + ip + ':' + port + '/user/query', json = param)
     return response.text
 
 def cli_depart(port, ip):
