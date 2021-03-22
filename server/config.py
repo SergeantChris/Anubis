@@ -1,7 +1,7 @@
 # Network variables
 from flask import request
 
-LOCAL_MODE = True
+LOCAL_MODE = False
 
 KARNAK_MASTER_PORT = '5000'
 

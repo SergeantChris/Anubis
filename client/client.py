@@ -2,34 +2,35 @@ import requests
 import sys
 import os
 from pprint import pprint
-import hashlib
 
 # Client is executed locally
-localhost = 'http://127.0.0.1'
-NETIFACE = 'lo'	 # this should be eth0 or em0 in order for the vms to work
-# TODO: define way to get parameters from command line (or file?)
+LOCAL_MODE = False
+if LOCAL_MODE:
+    NETIFACE = 'lo'
 
-def hash(key):
-    return hashlib.sha1(key.encode('utf-8')).hexdigest()
+else:
+    NETIFACE = 'ens3'
 
-def cli_insert(port, param):
-    response = requests.post(localhost + ':' + port + '/user/insert', param)
+HTTP = 'http://'
+
+def cli_insert(port, param, ip):
+    response = requests.post(HTTP + ip + ':' + port + '/user/insert', param)
     return response.text
 
-def cli_delete(port, param):
-    response = requests.post(localhost + ':' + port + '/user/delete', param)
+def cli_delete(port, param, ip):
+    response = requests.post(HTTP + ip + ':' + port + '/user/delete', param)
     return response.text
 
-def cli_query(port, param):
-    response = requests.post(localhost + ':' + port + '/user/query', param)
+def cli_query(port, param, ip):
+    response = requests.post(HTTP + ip + ':' + port + '/user/query', param)
     return response.text
 
-def cli_depart(port):
-    response = requests.post(localhost + ':' + port + '/user/depart', {})
+def cli_depart(port, ip):
+    response = requests.post(HTTP + ip + ':' + port + '/user/depart', {})
     return response.text
 
-def cli_overlay(port):
-    response = requests.post(localhost + ':' + port + '/user/overlay', {})
+def cli_overlay(port, ip):
+    response = requests.post(HTTP + ip + ':' + port + '/user/overlay', {})
     return eval(response.text)
 
 
@@ -41,16 +42,19 @@ if __name__ == '__main__':
         exit(0)
 
     port = sys.argv[2]
+    ip = os.popen('ip addr show ' + NETIFACE +
+                  ' | grep "\<inet\>" | awk \'{ print $2 }\' | awk -F "/" \'{ print $1 }\''
+                  ).read().strip()
 
     while 1:
         action = input('Tell us the action. To exit the cli write exit or Ctrl+C.\n')
 
         if action == 'depart':
-            print(cli_depart(port))
+            print(cli_depart(port, ip))
             exit(0)
 
         elif action == 'overlay':
-            pprint(cli_overlay(port))
+            pprint(cli_overlay(port, ip))
 
         elif action[:7] == 'insert,':
             insert_list = action.split(", ")
@@ -58,7 +62,7 @@ if __name__ == '__main__':
             pprint(insert_list)
             song_deats = {"key": insert_list[1],
                           "value": insert_list[2]}
-            print(cli_insert(port, song_deats))
+            print(cli_insert(port, song_deats, ip))
 
         elif action[:6] == 'query,':
             query_list = action.split(", ")
@@ -66,12 +70,12 @@ if __name__ == '__main__':
             req = {
                 "song_name": song_name
             }
-            print(cli_query(port, req))
+            print(cli_query(port, req, ip))
 
         elif action[:7] == 'delete,':
             delete_list = action.split(", ")
             song_deats = {"key": delete_list[1]}
-            print(cli_delete(port, song_deats))
+            print(cli_delete(port, song_deats, ip))
 
         elif action == 'exit':
             exit(0)
