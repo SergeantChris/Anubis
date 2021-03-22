@@ -42,6 +42,7 @@ if __name__ == '__main__':
                       "value": insert_list[1]}
         # randomly choose ip and port for insert
         port = random.choice(ports)
+        ip = random.choice(ips)
         _ = cli_insert(port, song_deats, ip)
 
     later = time.time()
@@ -59,6 +60,7 @@ if __name__ == '__main__':
         song_deats = {"song_name": query}
         # randomly choose ip and port for insert
         port = random.choice(ports)
+        ip = random.choice(ips)
         _ = cli_query(port, song_deats, ip)
     later = time.time()
     difference = later - now
