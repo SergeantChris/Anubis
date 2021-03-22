@@ -14,7 +14,7 @@ else:
 HTTP = 'http://'
 
 def cli_insert(port, param, ip):
-    response = requests.post(HTTP + ip + ':' + port + '/user/insert', param)
+    response = requests.post(HTTP + ip + ':' + port + '/user/insert', json = param)
     return response.text
 
 def cli_delete(port, param, ip):
